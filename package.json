@@ -1,0 +1,63 @@
+{
+  "name": "tweek-rt-translation-ai-assistants",
+  "version": "1.0.0",
+  "description": "Tweek Project to build an AI Assistant for Real Time Translation",
+  "license": "ISC",
+  "author": "ETI Team",
+  "type": "module",
+  "scripts": {
+    "prebuild": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json && tsc-alias",
+    "dev": "nodemon -e ts,json --exec tsx src | pino-pretty",
+    "lint": "eslint src/ tests/ --ext .ts",
+    "lint:fix": "eslint src/ tests/ --ext .ts --fix",
+    "prepare": "husky",
+    "start": "node --import=extensionless/register dist"
+  },
+  "lint-staged": {
+    "src/**/*.ts": [
+      "npm run lint:fix"
+    ]
+  },
+  "dependencies": {
+    "@fastify/awilix": "^5.1.0",
+    "@fastify/env": "^4.4.0",
+    "@fastify/multipart": "^8.3.0",
+    "@fastify/sensible": "^5.6.0",
+    "@fastify/type-provider-typebox": "^4.1.0",
+    "awilix": "^10.0.2",
+    "dotenv": "^16.4.5",
+    "extensionless": "^1.9.9",
+    "fastify": "^4.28.1",
+    "fastify-plugin": "4.5.1",
+    "fetch-retry": "^6.0.0",
+    "lint-staged": "^15.2.9",
+    "node-cache": "^5.1.2",
+    "pino": "^9.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "22.2.0",
+    "@typescript-eslint/eslint-plugin": "^7.4.0",
+    "@typescript-eslint/parser": "^7.4.0",
+    "eslint": "^8.57.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-airbnb-typescript": "^18.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-unused-imports": "^3.1.0",
+    "husky": "^9.1.5",
+    "nodemon": "^3.1.4",
+    "pino-pretty": "^11.2.2",
+    "prettier": "^3.3.3",
+    "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.10",
+    "tsx": "^4.18.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2",
+    "vite-tsconfig-paths": "^5.0.1"
+  },
+  "engines": {
+    "node": "^20.10.0"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/eslintrc.json",
+  "extends": [
+    "airbnb-base",
+    "airbnb-typescript/base",
+    "plugin:prettier/recommended"
+  ],
+  "plugins": [
+    "prettier",
+    "unused-imports",
+    "import"
+  ],
+  "parserOptions": {
+    "project": "./tsconfig.json"
+  },
+  "rules": {
+    "no-param-reassign": "off",
+    "import/extensions": "off",
+    "no-restricted-syntax": "off",
+    "guard-for-in": "off",
+    "prettier/prettier": ["error", {
+      "singleQuote": true,
+      "tabWidth": 2
+    }],
+    "import/order": ["error", {
+      "groups": [["builtin", "external", "internal"]],
+      "newlines-between": "always"
+    }],
+    "import/prefer-default-export": "off",
+    "class-methods-use-this": "off"
+  }
+}
