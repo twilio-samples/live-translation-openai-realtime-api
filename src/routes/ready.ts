@@ -1,6 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
 
-
 const readinessProbe: FastifyPluginAsync = async (server) => {
   server.get(
     '/ready',

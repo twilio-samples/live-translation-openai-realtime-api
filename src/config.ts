@@ -17,6 +17,11 @@ const ConfigSchema = Type.Strict(
     LOG_LEVEL: Type.String({ default: 'info' }),
     API_HOST: Type.String({ default: '0.0.0.0' }),
     API_PORT: Type.String({ default: '4040' }),
+    NGROK_DOMAIN: Type.String(),
+    TWILIO_ACCOUNT_SID: Type.String(),
+    TWILIO_AUTH_TOKEN: Type.String(),
+    TWILIO_TRANSLATE_NUMBER: Type.String(),
+    TWILIO_FLEX_NUMBER: Type.String(),
     OPENAI_API_KEY: Type.String(),
   }),
 );
