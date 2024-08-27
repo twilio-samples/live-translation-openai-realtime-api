@@ -154,12 +154,14 @@ export default class AudioInterceptor {
         Authorization: `Bearer ${this.config.OPENAI_API_KEY}`,
       },
     });
+    const open_ai_prompt = this.config.AI_AGENT_PROMPT.replace(/\[CALLER_LANGUAGE\]/g, this.callerLanguage);
+
     // Store the WebSocket instance
     this.openAISocket = socket;
     // Configure the Realtime AI Agent
     const configMsg = {
       event: 'set_inference_config',
-      system_message: `${this.config.AI_AGENT_PROMPT}`,
+      system_message: open_ai_prompt,
       turn_end_type: 'server_detection',
       voice: 'alloy',
       tool_choice: 'none',
