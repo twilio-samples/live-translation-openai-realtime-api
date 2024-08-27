@@ -52,11 +52,22 @@ export default class AudioInterceptor {
       }
     });
 
+    // Configure the Realtime AI Agent
+    const configMsg = {
+      'event': 'set_inference_config',
+      'system_message': 'You are a helpful assistant that tries to answer to customer questions. Be polite, precise and short in your answers.',
+      'turn_end_type': 'server_detection',
+      'voice': 'alloy',
+      'tool_choice': 'none',
+      'disable_audio': false,
+      'audio_format': 'g711-ulaw',
+    };
+
      // Event listener for when the connection is opened
      socket.on('open', () => {
       this.logger.info('WebSocket connection to OpenAI is open now.');
-      // You can send a message to the server here if needed
-      // socket.send('Hello OpenAI!');
+      // Send the initial prompt/config message to OpenAI for the Translation Agent.
+      this.sendMessageToOpenAI(socket, configMsg);
     });
 
     // Event listener for when a message is received from the server
@@ -74,6 +85,15 @@ export default class AudioInterceptor {
     socket.on('close', () => {
       this.logger.info('WebSocket connection to OpenAI is closed now.');
     });
+  }
+
+  private sendMessageToOpenAI(socket: WebSocket, message: object) {
+    if (socket.readyState === WebSocket.OPEN) {
+      const jsonMessage = JSON.stringify(message);
+      socket.send(jsonMessage);
+    } else {
+      this.logger.error('WebSocket is not open. Unable to send message.');
+    }
   }
 
   get inboundSocket(): StreamSocket {
