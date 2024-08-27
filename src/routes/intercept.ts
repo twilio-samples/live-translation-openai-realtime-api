@@ -32,7 +32,7 @@ const interceptWS: FastifyPluginAsyncTypebox = async (server) => {
           typeof customParameters.from === 'string'
         ) {
           const { callSid } = message.start;
-          const interceptor = new AudioInterceptor({ logger });
+          const interceptor = new AudioInterceptor({ logger, server });
           interceptor.inboundSocket = ss;
           map.set(callSid, interceptor);
           logger.info(
