@@ -9,8 +9,8 @@
     "prebuild": "rm -rf dist",
     "build": "tsc -p tsconfig.build.json && tsc-alias",
     "dev": "nodemon -e ts,json --exec tsx src | pino-pretty",
-    "lint": "eslint src/ tests/ --ext .ts",
-    "lint:fix": "eslint src/ tests/ --ext .ts --fix",
+    "lint": "eslint src/ --ext .ts",
+    "lint:fix": "eslint src/ --ext .ts --fix",
     "prepare": "husky",
     "start": "node --import=extensionless/register dist"
   },
@@ -22,18 +22,24 @@
   "dependencies": {
     "@fastify/awilix": "^5.1.0",
     "@fastify/env": "^4.4.0",
+    "@fastify/formbody": "^7.4.0",
     "@fastify/multipart": "^8.3.0",
     "@fastify/sensible": "^5.6.0",
     "@fastify/type-provider-typebox": "^4.1.0",
+    "@fastify/websocket": "^10.0.1",
+    "@google-cloud/text-to-speech": "^5.4.0",
+    "ajv": "^8.17.1",
     "awilix": "^10.0.2",
     "dotenv": "^16.4.5",
     "extensionless": "^1.9.9",
     "fastify": "^4.28.1",
+    "fastify-formbody": "^5.2.0",
     "fastify-plugin": "4.5.1",
     "fetch-retry": "^6.0.0",
     "lint-staged": "^15.2.9",
-    "node-cache": "^5.1.2",
-    "pino": "^9.3.2"
+    "pino": "^9.3.2",
+    "twilio": "^5.2.3",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "22.2.0",
