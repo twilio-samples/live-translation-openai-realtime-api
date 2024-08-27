@@ -2,7 +2,7 @@ import { FastifyBaseLogger, FastifyPluginAsync } from 'fastify';
 import { Type } from '@fastify/type-provider-typebox';
 import AudioInterceptor from '@/services/AudioInterceptor';
 
-const livenessProbe: FastifyPluginAsync = async (server) => {
+const flexReservationAccepted: FastifyPluginAsync = async (server) => {
   server.post(
     '/reservation-accepted',
     {
@@ -28,4 +28,4 @@ const livenessProbe: FastifyPluginAsync = async (server) => {
   );
 };
 
-export default livenessProbe;
+export default flexReservationAccepted;
