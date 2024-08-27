@@ -55,7 +55,7 @@ export default class AudioInterceptor {
     // Configure the Realtime AI Agent
     const configMsg = {
       'event': 'set_inference_config',
-      'system_message': 'You are a helpful assistant that tries to answer to customer questions. Be polite, precise and short in your answers.',
+      'system_message': `${this.server.config.AI_AGENT_PROMPT}`,
       'turn_end_type': 'server_detection',
       'voice': 'alloy',
       'tool_choice': 'none',
@@ -68,6 +68,7 @@ export default class AudioInterceptor {
       this.logger.info('WebSocket connection to OpenAI is open now.');
       // Send the initial prompt/config message to OpenAI for the Translation Agent.
       this.sendMessageToOpenAI(socket, configMsg);
+      this.logger.info(configMsg, 'Session has been configured with the following settings:');
     });
 
     // Event listener for when a message is received from the server

@@ -104,7 +104,7 @@ export default class StreamSocket {
       if (parsed.event === 'start') {
         this.onStartCallback.map((cb) => cb(parsed));
         this.streamSid = parsed.start.streamSid;
-        this.logger.info('The stream sid is %s', this.streamSid);
+        //this.logger.info('The stream sid is %s', this.streamSid);
       } else if (parsed.event === 'media') {
         this.onMediaCallback.map((cb) => cb(parsed));
       } else if (parsed.event === 'stop') {
@@ -144,7 +144,7 @@ export default class StreamSocket {
   };
 
   public send = (messages: string[], isLast = false) => {
-    this.logger.info('The stream sid is %s', this.streamSid);
+    //this.logger.info('The stream sid is %s', this.streamSid);
     const buffers = messages.map((msg) => Buffer.from(msg, 'base64'));
     const payload = Buffer.concat(buffers).toString('base64');
 
