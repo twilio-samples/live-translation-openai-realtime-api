@@ -2,15 +2,12 @@ import { FastifyBaseLogger } from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import WebSocket from 'ws';
 
-import StreamSocket, {
-  MediaBaseAudioMessage,
-  StartBaseAudioMessage,
-} from '@/services/StreamSocket';
+import StreamSocket, { MediaBaseAudioMessage } from '@/services/StreamSocket';
 import { Config } from '@/config';
 
 type AudioInterceptorOptions = {
   logger: FastifyBaseLogger;
-  server: FastifyInstance;
+  config: Config;
 };
 export default class AudioInterceptor {
   private static instance: AudioInterceptor;
@@ -18,12 +15,6 @@ export default class AudioInterceptor {
   private readonly logger: FastifyBaseLogger;
 
   private config: Config;
-
-  private callSidFromAcceptedReservation: string | undefined;
-
-  private callSidFromInboundMediaSocket: string | undefined;
-
-  private callSidFromOutboundMediaSocket: string | undefined;
 
   private callerLanguage: string | undefined;
 
@@ -37,38 +28,11 @@ export default class AudioInterceptor {
 
   lastSpeaker = 'agent';
 
-  private constructor(options: AudioInterceptorOptions) {
+  public constructor(options: AudioInterceptorOptions) {
     this.logger = options.logger;
-    this.config = options.server.config;
+    this.config = options.config;
 
     this.setupOpenAISocket();
-  }
-
-  public static getInstance(
-    options: AudioInterceptorOptions,
-  ): AudioInterceptor {
-    if (!AudioInterceptor.instance) {
-      AudioInterceptor.instance = new AudioInterceptor(options);
-    }
-    return AudioInterceptor.instance;
-  }
-
-  public setCallSidFromAcceptedReservation(callSid: string): void {
-    this.callSidFromAcceptedReservation = callSid;
-    this.logger.info(`Call SID set to ${callSid} in AudioInterceptor`);
-  }
-
-  public setCallerLanguage(language: string): void {
-    this.callerLanguage = language;
-    this.logger.info(`Caller language set to ${language} in AudioInterceptor`);
-  }
-
-  public setMediaSocketCallSid(callSid: string, track: string): void {
-    if (track === 'inbound') {
-      this.callSidFromInboundMediaSocket = callSid;
-    } else {
-      this.callSidFromOutboundMediaSocket = callSid;
-    }
   }
 
   public close() {
@@ -85,10 +49,12 @@ export default class AudioInterceptor {
     }
   }
 
-  private start() {
+  public start() {
     if (!this.#outboundSocket || !this.#inboundSocket) {
+      this.logger.error('Both sockets are not set. Cannot start interception');
       return;
     }
+
     this.logger.info('Initiating the web socket to OpenAI Realtime S2S API');
     // Start Audio Interception
     this.logger.info('Both sockets are set. Starting interception');
@@ -102,24 +68,16 @@ export default class AudioInterceptor {
 
   private translateAndForwardAudioToInbound(message: MediaBaseAudioMessage) {
     this.lastSpeaker = 'agent';
-    this.logger.info(
-      this.callSidFromAcceptedReservation,
-      'this.callSidFromAcceptedReservation',
-    );
-    this.logger.info(
-      this.callSidFromInboundMediaSocket,
-      'this.callSidFromInboundMediaSocket',
-    );
-    if (
-      this.callSidFromAcceptedReservation &&
-      this.callSidFromOutboundMediaSocket ===
-        this.callSidFromAcceptedReservation
-    ) {
-      // We have an accepted reservation, meaning
-      this.logger.info(
-        'WE HAVE A MATCH BETWEEN THE RESERVATION AND THE OUTBOUND MEDIA STREAM',
-      );
-    }
+    // if (
+    //   this.callSidFromAcceptedReservation &&
+    //   this.callSidFromOutboundMediaSocket ===
+    //     this.callSidFromAcceptedReservation
+    // ) {
+    //   // We have an accepted reservation, meaning
+    //   this.logger.info(
+    //     'WE HAVE A MATCH BETWEEN THE RESERVATION AND THE OUTBOUND MEDIA STREAM',
+    //   );
+    // }
 
     /* if (this.openAISocket) {
       this.forwardAudioToOpenAIForTranslation(this.openAISocket, message.media.payload);
@@ -154,14 +112,17 @@ export default class AudioInterceptor {
         Authorization: `Bearer ${this.config.OPENAI_API_KEY}`,
       },
     });
-    const open_ai_prompt = this.config.AI_AGENT_PROMPT.replace(/\[CALLER_LANGUAGE\]/g, this.callerLanguage);
+    const prompt = this.config.AI_AGENT_PROMPT.replace(
+      /\[CALLER_LANGUAGE\]/g,
+      this.callerLanguage,
+    );
 
     // Store the WebSocket instance
     this.openAISocket = socket;
     // Configure the Realtime AI Agent
     const configMsg = {
       event: 'set_inference_config',
-      system_message: open_ai_prompt,
+      system_message: prompt,
       turn_end_type: 'server_detection',
       voice: 'alloy',
       tool_choice: 'none',
@@ -236,7 +197,6 @@ export default class AudioInterceptor {
 
   set inboundSocket(value: StreamSocket) {
     this.#inboundSocket = value;
-    this.start();
   }
 
   get outboundSocket(): StreamSocket {
@@ -248,6 +208,5 @@ export default class AudioInterceptor {
 
   set outboundSocket(value: StreamSocket) {
     this.#outboundSocket = value;
-    this.start();
   }
 }

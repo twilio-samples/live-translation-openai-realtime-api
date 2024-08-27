@@ -8,6 +8,7 @@ import pino from 'pino';
 
 import config from '@/config';
 import routes from '@/routes';
+import AudioInterceptor from './services/AudioInterceptor';
 
 const server = fastify({
   logger: {
@@ -43,6 +44,7 @@ await server.register(ws);
 await server.register(routes);
 
 diContainer.register({
+  audioInterceptors: asValue(new Map<string, AudioInterceptor>()),
   logger: asValue(server.log.child({ stream: 'app' })),
 });
 

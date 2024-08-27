@@ -1,5 +1,6 @@
 import { FastifyBaseLogger, FastifyPluginAsync } from 'fastify';
 import { Type } from '@fastify/type-provider-typebox';
+
 import AudioInterceptor from '@/services/AudioInterceptor';
 
 const flexReservationAccepted: FastifyPluginAsync = async (server) => {
@@ -9,22 +10,27 @@ const flexReservationAccepted: FastifyPluginAsync = async (server) => {
       logLevel: 'info',
       schema: {
         body: Type.Object({
-            EventType: Type.String(),
-            AccountSid: Type.String(),
-            WorkspaceSid: Type.String(),
-            ResourceSid: Type.String(),
-            TaskAttributes: Type.String()
-        })  
-      }
+          EventType: Type.String(),
+          AccountSid: Type.String(),
+          WorkspaceSid: Type.String(),
+          ResourceSid: Type.String(),
+          TaskAttributes: Type.String(),
+        }),
+      },
     },
     async (req, res) => {
       const logger = req.diScope.resolve<FastifyBaseLogger>('logger');
-      const callSid = JSON.parse(req.body.TaskAttributes).call_sid;
-      const callerLanguage = JSON.parse(req.body.TaskAttributes).caller_language;
-      // Get the singleton instance and set the callSid
-      const audioInterceptor = AudioInterceptor.getInstance({logger, server});
-      audioInterceptor.setCallSidFromAcceptedReservation(callSid);
-      audioInterceptor.setCallerLanguage(callerLanguage);
+      const map =
+        req.diScope.resolve<Map<string, AudioInterceptor>>('audioInterceptors');
+
+      const [, audioInterceptor] = map.entries().next().value;
+      if (!audioInterceptor) {
+        logger.error('AudioInterceptor not found');
+        return res.status(404).send('Not Found');
+      }
+
+      audioInterceptor.start();
+
       res.status(200).send('OK');
     },
   );

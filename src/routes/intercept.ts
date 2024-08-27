@@ -5,8 +5,6 @@ import Twilio from 'twilio';
 import AudioInterceptor from '@/services/AudioInterceptor';
 import StreamSocket, { StartBaseAudioMessage } from '@/services/StreamSocket';
 
-const map: Map<string, AudioInterceptor> = new Map();
-
 const interceptWS: FastifyPluginAsyncTypebox = async (server) => {
   server.get(
     '/intercept',
@@ -23,6 +21,8 @@ const interceptWS: FastifyPluginAsyncTypebox = async (server) => {
         logger,
         socket,
       });
+      const map =
+        req.diScope.resolve<Map<string, AudioInterceptor>>('audioInterceptors');
 
       ss.onStart(async (message: StartBaseAudioMessage) => {
         const { customParameters } = message.start;
@@ -32,16 +32,18 @@ const interceptWS: FastifyPluginAsyncTypebox = async (server) => {
           typeof customParameters.from === 'string'
         ) {
           const { callSid } = message.start;
-          const interceptor = AudioInterceptor.getInstance({ logger, server });
+          const interceptor = new AudioInterceptor({
+            logger,
+            config: server.config,
+          });
           interceptor.inboundSocket = ss;
           map.set(callSid, interceptor);
           logger.info(
-            'Added inbound interceptor for %s with streamSid %s',
+            'Added inbound interceptor for %s with streamSid %s for callSid %s',
             customParameters.from,
             message.start.streamSid,
+            callSid,
           );
-
-          interceptor.setMediaSocketCallSid(callSid, 'inbound');
 
           logger.info('Connecting to Agent');
           await twilio.calls.create({
@@ -61,17 +63,21 @@ const interceptWS: FastifyPluginAsyncTypebox = async (server) => {
             message.start.streamSid,
           );
           interceptor.outboundSocket = ss;
-          interceptor.setMediaSocketCallSid(customParameters.callSid, 'outbound');
-
         }
       });
 
-      ss.onStop((message) => {
-        if (map.has(message.stop.callSid)) {
-          const interceptor = map.get(message.stop.callSid);
-          interceptor.inboundSocket = undefined;
-          interceptor.outboundSocket = undefined;
-          map.delete(message.stop.callSid);
+      ss.onStop(() => {
+        // if (map.has(message.stop.callSid)) {
+        //   const interceptor = map.get(message.stop.callSid);
+        //   interceptor.inboundSocket = undefined;
+        //   interceptor.outboundSocket = undefined;
+        //   map.delete(message.stop.callSid);
+        // }
+        const [callSid, interceptor] = map.entries().next().value;
+        if (interceptor) {
+          logger.info('Closing interceptor');
+          interceptor.close();
+          map.delete(callSid);
         }
       });
     },
