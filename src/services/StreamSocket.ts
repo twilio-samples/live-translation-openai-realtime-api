@@ -39,6 +39,7 @@ export type StopBaseAudioMessage = BaseAudioMessage & {
     accountSid: string;
     callSid: string;
   };
+  from?: string;
 };
 
 export type MarkBaseAudioMessage = BaseAudioMessage & {
@@ -69,6 +70,8 @@ export default class StreamSocket {
 
   public streamSid: string;
 
+  public from?: string;
+
   private onStartCallback: OnCallback<StartBaseAudioMessage>[] = [];
 
   private onConnectedCallback: OnCallback<ConnectedBaseAudioMessage>[] = [];
@@ -90,61 +93,49 @@ export default class StreamSocket {
     });
   }
 
-  private onMessage = (message: unknown) => {
-    const parse = () => {
-      if (typeof message === 'string') {
-        return JSON.parse(message.toString()) as AudioMessage;
-      }
-      return JSON.parse(message.toString()) as AudioMessage;
-    };
+  public close() {
+    this.socket.close();
+  }
 
-    try {
-      const parsed = parse();
-
-      if (parsed.event === 'start') {
-        this.onStartCallback.map((cb) => cb(parsed));
-        this.streamSid = parsed.start.streamSid;
-        this.logger.info('The stream sid is %s', this.streamSid);
-      } else if (parsed.event === 'media') {
-        this.onMediaCallback.map((cb) => cb(parsed));
-      } else if (parsed.event === 'stop') {
-        this.onMediaCallback = [];
-        this.onStartCallback = [];
-        this.onConnectedCallback = [];
-
-        this.onStopCallback.map((cb) => cb(parsed));
-      } else if (parsed.event === 'connected') {
-        this.onConnectedCallback.map((cb) => cb(parsed));
-      } else if (parsed.event === 'mark') {
-        // do something
-      } else {
-        this.logger.error('Unknown event: %s', JSON.stringify(parsed));
-      }
-    } catch (error) {
-      this.logger.error('Error parsing message1', { error });
-      this.logger.error('Error is1 %s', JSON.stringify(error));
-      this.logger.error('Message is1 %s', JSON.stringify(message));
-    }
-  };
-
+  /**
+   * Adds a callback to the connected event
+   * @param callback
+   */
   public onConnected = (callback: OnCallback<ConnectedBaseAudioMessage>) => {
     this.onConnectedCallback.push(callback);
   };
 
+  /**
+   * Adds a callback to the start event
+   * @param callback
+   */
   public onStart = (callback: OnCallback<StartBaseAudioMessage>) => {
     this.onStartCallback.push(callback);
   };
 
+  /**
+   * Adds a callback to the media event
+   * @param callback
+   */
   public onMedia = (callback: OnCallback<MediaBaseAudioMessage>) => {
     this.onMediaCallback.push(callback);
   };
 
+  /**
+   * Adds a callback to the stop event
+   * @param callback
+   */
   public onStop = (callback: OnCallback<StopBaseAudioMessage>) => {
     this.onStopCallback.push(callback);
   };
 
+  /**
+   * Sends a message to the socket
+   * @param messages
+   * @param isLast
+   */
   public send = (messages: string[], isLast = false) => {
-    this.logger.info('The stream sid is %s', this.streamSid);
+    // this.logger.info('The stream sid is %s', this.streamSid);
     const buffers = messages.map((msg) => Buffer.from(msg, 'base64'));
     const payload = Buffer.concat(buffers).toString('base64');
 
@@ -165,6 +156,46 @@ export default class StreamSocket {
         },
       };
       this.socket.send(JSON.stringify(markMessage));
+    }
+  };
+
+  /**
+   * Routes the message to the correct callback
+   * @param message
+   */
+  private onMessage = (message: unknown) => {
+    const parse = () => {
+      if (typeof message === 'string') {
+        return JSON.parse(message.toString()) as AudioMessage;
+      }
+      return JSON.parse(message.toString()) as AudioMessage;
+    };
+
+    try {
+      const parsed = parse();
+
+      if (parsed.event === 'start') {
+        this.onStartCallback.map((cb) => cb(parsed));
+        this.streamSid = parsed.start.streamSid;
+      } else if (parsed.event === 'media') {
+        this.onMediaCallback.map((cb) => cb(parsed));
+      } else if (parsed.event === 'stop') {
+        this.onMediaCallback = [];
+        this.onStartCallback = [];
+        this.onConnectedCallback = [];
+
+        this.onStopCallback.map((cb) => cb({ ...parsed, from: this.from }));
+      } else if (parsed.event === 'connected') {
+        this.onConnectedCallback.map((cb) => cb(parsed));
+      } else if (parsed.event === 'mark') {
+        // do something
+      } else {
+        this.logger.error('Unknown event: %s', JSON.stringify(parsed));
+      }
+    } catch (error) {
+      this.logger.error('Error parsing message1', { error });
+      this.logger.error('Error is1 %s', JSON.stringify(error));
+      this.logger.error('Message is1 %s', JSON.stringify(message));
     }
   };
 }

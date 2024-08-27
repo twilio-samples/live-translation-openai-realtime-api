@@ -22,7 +22,9 @@ const ConfigSchema = Type.Strict(
     TWILIO_AUTH_TOKEN: Type.String(),
     TWILIO_TRANSLATE_NUMBER: Type.String(),
     TWILIO_FLEX_NUMBER: Type.String(),
+    TWILIO_FLEX_WORKFLOW_SID: Type.String(),
     OPENAI_API_KEY: Type.String(),
+    AI_AGENT_PROMPT: Type.String(),
   }),
 );
 
