@@ -39,6 +39,7 @@ export type StopBaseAudioMessage = BaseAudioMessage & {
     accountSid: string;
     callSid: string;
   };
+  from?: string;
 };
 
 export type MarkBaseAudioMessage = BaseAudioMessage & {
@@ -68,6 +69,8 @@ export default class StreamSocket {
   public readonly socket: WebSocket;
 
   public streamSid: string;
+
+  public from?: string;
 
   private onStartCallback: OnCallback<StartBaseAudioMessage>[] = [];
 
@@ -181,7 +184,7 @@ export default class StreamSocket {
         this.onStartCallback = [];
         this.onConnectedCallback = [];
 
-        this.onStopCallback.map((cb) => cb(parsed));
+        this.onStopCallback.map((cb) => cb({ ...parsed, from: this.from }));
       } else if (parsed.event === 'connected') {
         this.onConnectedCallback.map((cb) => cb(parsed));
       } else if (parsed.event === 'mark') {

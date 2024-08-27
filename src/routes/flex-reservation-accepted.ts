@@ -22,8 +22,9 @@ const flexReservationAccepted: FastifyPluginAsync = async (server) => {
       const logger = req.diScope.resolve<FastifyBaseLogger>('logger');
       const map =
         req.diScope.resolve<Map<string, AudioInterceptor>>('audioInterceptors');
+      const { from } = JSON.parse(req.body.TaskAttributes);
 
-      const [, audioInterceptor] = map.entries().next().value;
+      const audioInterceptor = map.get(from);
       if (!audioInterceptor) {
         logger.error('AudioInterceptor not found');
         return res.status(404).send('Not Found');

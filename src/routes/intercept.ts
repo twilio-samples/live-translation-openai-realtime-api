@@ -1,6 +1,7 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { FastifyBaseLogger } from 'fastify';
 import Twilio from 'twilio';
+import TwiML from 'twilio/lib/twiml/TwiML';
 
 import AudioInterceptor from '@/services/AudioInterceptor';
 import StreamSocket, { StartBaseAudioMessage } from '@/services/StreamSocket';
@@ -31,33 +32,52 @@ const interceptWS: FastifyPluginAsyncTypebox = async (server) => {
           customParameters?.direction === 'inbound' &&
           typeof customParameters.from === 'string'
         ) {
-          const { callSid } = message.start;
+          ss.from = customParameters.from;
           const interceptor = new AudioInterceptor({
             logger,
             config: server.config,
           });
           interceptor.inboundSocket = ss;
-          map.set(callSid, interceptor);
+          map.set(customParameters.from, interceptor);
           logger.info(
-            'Added inbound interceptor for %s with streamSid %s for callSid %s',
+            'Added inbound interceptor for %s with streamSid %s for callSid',
             customParameters.from,
             message.start.streamSid,
-            callSid,
           );
 
           logger.info('Connecting to Agent');
           await twilio.calls.create({
             from: server.config.TWILIO_TRANSLATE_NUMBER,
             to: server.config.TWILIO_FLEX_NUMBER,
-            url: `https://${server.config.NGROK_DOMAIN}/outbound-call?CallSid=${callSid}`,
+            callerId: customParameters.from,
+            twiml: `
+              <Response>
+                <Say>A customer is on the line.</Say>
+                <Connect>
+                  <Stream name="Outbound Audio Stream" url="wss://${server.config.NGROK_DOMAIN}/intercept">
+                    <Parameter name="direction" value="outbound"/>
+                    <Parameter name="callSid" value="${message.start.callSid}"/>
+                    <Parameter name="from" value="${customParameters.from}"/>
+                  </Stream>
+                </Connect>
+              </Response>
+            `,
           });
         }
 
         if (
           customParameters?.direction === 'outbound' &&
-          typeof customParameters.callSid === 'string'
+          typeof customParameters.from === 'string'
         ) {
-          const interceptor = map.get(customParameters.callSid);
+          const interceptor = map.get(customParameters.from);
+          ss.from = customParameters.from;
+          if (!interceptor) {
+            logger.error(
+              'No inbound interceptor found for %s',
+              customParameters.from,
+            );
+            return;
+          }
           logger.info(
             'Added outbound interceptor with streamSid %s',
             message.start.streamSid,
@@ -66,19 +86,21 @@ const interceptWS: FastifyPluginAsyncTypebox = async (server) => {
         }
       });
 
-      ss.onStop(() => {
-        // if (map.has(message.stop.callSid)) {
-        //   const interceptor = map.get(message.stop.callSid);
-        //   interceptor.inboundSocket = undefined;
-        //   interceptor.outboundSocket = undefined;
-        //   map.delete(message.stop.callSid);
-        // }
-        const [callSid, interceptor] = map.entries().next().value;
-        if (interceptor) {
-          logger.info('Closing interceptor');
-          interceptor.close();
-          map.delete(callSid);
+      ss.onStop((message) => {
+        if (!message?.from) {
+          logger.info('No from in message - unknown what interceptor to close');
+          return;
         }
+
+        const interceptor = map.get(message.from);
+        if (!interceptor) {
+          logger.error('No interceptor found for %s', message.from);
+          return;
+        }
+
+        logger.info('Closing interceptor');
+        interceptor.close();
+        map.delete(message.from);
       });
     },
   );

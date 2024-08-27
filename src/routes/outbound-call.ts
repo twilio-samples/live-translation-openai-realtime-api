@@ -1,4 +1,3 @@
-import { Type } from '@fastify/type-provider-typebox';
 import { FastifyBaseLogger, FastifyPluginAsync } from 'fastify';
 import VoiceResponse from 'twilio/lib/twiml/VoiceResponse';
 
@@ -7,15 +6,6 @@ const outboundCall: FastifyPluginAsync = async (server) => {
     '/outbound-call',
     {
       logLevel: 'info',
-      schema: {
-        body: Type.Object({
-          From: Type.String(),
-          To: Type.String(),
-        }),
-        querystring: Type.Object({
-          CallSid: Type.String(),
-        }),
-      },
     },
     async (req, reply) => {
       const logger = req.diScope.resolve<FastifyBaseLogger>('logger');
@@ -23,21 +13,12 @@ const outboundCall: FastifyPluginAsync = async (server) => {
 
       try {
         logger.info('Setting up media stream for outbound call...');
-
         response.say('A customer is on the line.');
-        const start = response.connect();
-        const stream = start.stream({
-          name: 'Outbound Audio Stream',
-          url: `wss://${server.config.NGROK_DOMAIN}/intercept`,
-        });
-        stream.parameter({
-          name: 'direction',
-          value: 'outbound',
-        });
-        stream.parameter({
-          name: 'callSid',
-          value: req.query.CallSid,
-        });
+        response
+          .enqueue({
+            workflowSid: server.config.TWILIO_FLEX_WORKFLOW_SID,
+          })
+          .task(`{ "name": "${req.body.Caller}", "type": "inbound" }`);
 
         logger.info('Sending TwiML response for outbound call...');
         reply.type('text/xml');
