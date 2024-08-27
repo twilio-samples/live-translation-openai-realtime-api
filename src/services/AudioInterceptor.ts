@@ -2,7 +2,11 @@ import { FastifyBaseLogger } from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import WebSocket from 'ws';
 
-import StreamSocket, { MediaBaseAudioMessage, StartBaseAudioMessage } from '@/services/StreamSocket';
+import StreamSocket, {
+  MediaBaseAudioMessage,
+  StartBaseAudioMessage,
+} from '@/services/StreamSocket';
+import { Config } from '@/config';
 
 type AudioInterceptorOptions = {
   logger: FastifyBaseLogger;
@@ -10,25 +14,37 @@ type AudioInterceptorOptions = {
 };
 export default class AudioInterceptor {
   private static instance: AudioInterceptor;
+
   private readonly logger: FastifyBaseLogger;
-  private server: FastifyInstance;
+
+  private config: Config;
+
   private callSidFromAcceptedReservation: string | undefined;
+
   private callSidFromInboundMediaSocket: string | undefined;
+
   private callSidFromOutboundMediaSocket: string | undefined;
 
   #inboundSocket?: StreamSocket;
+
   #outboundSocket?: StreamSocket;
+
   private openAISocket?: WebSocket;
 
   messages = [];
+
   lastSpeaker = 'agent';
 
   private constructor(options: AudioInterceptorOptions) {
     this.logger = options.logger;
-    this.server = options.server;
+    this.config = options.server.config;
+
+    this.setupOpenAISocket();
   }
 
-  public static getInstance(options: AudioInterceptorOptions): AudioInterceptor {
+  public static getInstance(
+    options: AudioInterceptorOptions,
+  ): AudioInterceptor {
     if (!AudioInterceptor.instance) {
       AudioInterceptor.instance = new AudioInterceptor(options);
     }
@@ -48,83 +64,118 @@ export default class AudioInterceptor {
     }
   }
 
+  public close() {
+    if (this.#inboundSocket) {
+      this.#inboundSocket.close();
+      this.#inboundSocket = null;
+    }
+    if (this.#outboundSocket) {
+      this.#outboundSocket.close();
+      this.#outboundSocket = null;
+    }
+    if (this.openAISocket) {
+      this.openAISocket.close();
+    }
+  }
+
   private start() {
     if (!this.#outboundSocket || !this.#inboundSocket) {
       return;
     }
-    // Initiate the OpenAI S2S WebSocket connection
-    this.initiateOpenAIS2SWebsocket();
     this.logger.info('Initiating the web socket to OpenAI Realtime S2S API');
     // Start Audio Interception
     this.logger.info('Both sockets are set. Starting interception');
-    this.#inboundSocket.onMedia(this.translateAndForwardAudioToOutbound.bind(this));
-    this.#outboundSocket.onMedia(this.translateAndForwardAudioToInbound.bind(this));
+    this.#inboundSocket.onMedia(
+      this.translateAndForwardAudioToOutbound.bind(this),
+    );
+    this.#outboundSocket.onMedia(
+      this.translateAndForwardAudioToInbound.bind(this),
+    );
   }
 
   private translateAndForwardAudioToInbound(message: MediaBaseAudioMessage) {
     this.lastSpeaker = 'agent';
-    this.logger.info(this.callSidFromAcceptedReservation, 'this.callSidFromAcceptedReservation')
-    this.logger.info(this.callSidFromInboundMediaSocket, 'this.callSidFromInboundMediaSocket')
-    if(this.callSidFromAcceptedReservation && this.callSidFromOutboundMediaSocket === this.callSidFromAcceptedReservation) {
-      // We have an accepted reservation, meaning 
-      this.logger.info('WE HAVE A MATCH BETWEEN THE RESERVATION AND THE OUTBOUND MEDIA STREAM');
+    this.logger.info(
+      this.callSidFromAcceptedReservation,
+      'this.callSidFromAcceptedReservation',
+    );
+    this.logger.info(
+      this.callSidFromInboundMediaSocket,
+      'this.callSidFromInboundMediaSocket',
+    );
+    if (
+      this.callSidFromAcceptedReservation &&
+      this.callSidFromOutboundMediaSocket ===
+        this.callSidFromAcceptedReservation
+    ) {
+      // We have an accepted reservation, meaning
+      this.logger.info(
+        'WE HAVE A MATCH BETWEEN THE RESERVATION AND THE OUTBOUND MEDIA STREAM',
+      );
     }
 
-   /* if (this.openAISocket) {
+    /* if (this.openAISocket) {
       this.forwardAudioToOpenAIForTranslation(this.openAISocket, message.media.payload);
     } else {
       this.logger.error('OpenAI WebSocket is not available.');
     }
     // Need to figure out how to send the translated audio back to the inbound socket when the event comes from the OpenAI WebSocket
-    // Looks like this can't be done synchronously.*/
+    // Looks like this can't be done synchronously. */
     this.#inboundSocket.send([message.media.payload]);
   }
 
   private translateAndForwardAudioToOutbound(message: MediaBaseAudioMessage) {
     this.lastSpeaker = 'client';
-    /*if (this.openAISocket) {
+    /* if (this.openAISocket) {
       this.forwardAudioToOpenAIForTranslation(this.openAISocket, message.media.payload);
     } else {
       this.logger.error('OpenAI WebSocket is not available.');
-    }*/
+    } */
     // Need to figure out how to send the translated audio back to the outbound socket when the event comes from the OpenAI WebSocket
     // Looks like this can't be done synchronously.
     this.#outboundSocket.send([message.media.payload]);
   }
 
-  private initiateOpenAIS2SWebsocket() {
+  /**
+   * Setup the WebSocket connection to OpenAI Realtime S2S API
+   * @private
+   */
+  private setupOpenAISocket() {
     const url = 'wss://api.openai.com/v1/realtime';
     const socket = new WebSocket(url, {
       headers: {
-        'Authorization': `Bearer ${this.server.config.OPENAI_API_KEY}`
-      }
+        Authorization: `Bearer ${this.config.OPENAI_API_KEY}`,
+      },
     });
     // Store the WebSocket instance
     this.openAISocket = socket;
     // Configure the Realtime AI Agent
     const configMsg = {
-      'event': 'set_inference_config',
-      'system_message': `${this.server.config.AI_AGENT_PROMPT}`,
-      'turn_end_type': 'server_detection',
-      'voice': 'alloy',
-      'tool_choice': 'none',
-      'disable_audio': false,
-      'audio_format': 'g711-ulaw',
+      event: 'set_inference_config',
+      system_message: `${this.config.AI_AGENT_PROMPT}`,
+      turn_end_type: 'server_detection',
+      voice: 'alloy',
+      tool_choice: 'none',
+      disable_audio: false,
+      audio_format: 'g711-ulaw',
     };
 
-     // Event listener for when the connection is opened
-     socket.on('open', () => {
+    // Event listener for when the connection is opened
+    socket.on('open', () => {
       this.logger.info('WebSocket connection to OpenAI is open now.');
       // Send the initial prompt/config message to OpenAI for the Translation Agent.
       this.sendMessageToOpenAI(socket, configMsg);
-      this.logger.info(configMsg, 'Session has been configured with the following settings:');
+      this.logger.info(
+        configMsg,
+        'Session has been configured with the following settings:',
+      );
     });
 
     // Event listener for when a message is received from the server
     socket.on('message', (data) => {
-      this.logger.info( data.toString(), 'Message from OpenAI:');
+      this.logger.info(data.toString(), 'Message from OpenAI:');
       // Handle the incoming message here
-      if (data.event == 'audio_buffer_add') {
+      if (data.event === 'audio_buffer_add') {
         // Handle an audio message from OpenAI, post translation
         this.logger.info('Received translation from OpenAI');
         this.handleTranslatedAudioFromOpenAI(data);
@@ -144,17 +195,17 @@ export default class AudioInterceptor {
 
   private forwardAudioToOpenAIForTranslation(socket: WebSocket, audio: String) {
     this.sendMessageToOpenAI(socket, {
-      'event': 'audio_buffer_add',
-      'data': audio
+      event: 'audio_buffer_add',
+      data: audio,
     });
   }
 
   private handleTranslatedAudioFromOpenAI(message: object) {
-    if (this.lastSpeaker == 'agent') {
-      this.#inboundSocket.send([message['data']]);
+    if (this.lastSpeaker === 'agent') {
+      this.#inboundSocket.send([message.data]);
     } else {
       // Last speaker is client
-      this.#outboundSocket.send([message['data']]);
+      this.#outboundSocket.send([message.data]);
     }
   }
 
