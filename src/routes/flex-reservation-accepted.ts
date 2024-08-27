@@ -20,9 +20,11 @@ const flexReservationAccepted: FastifyPluginAsync = async (server) => {
     async (req, res) => {
       const logger = req.diScope.resolve<FastifyBaseLogger>('logger');
       const callSid = JSON.parse(req.body.TaskAttributes).call_sid;
+      const callerLanguage = JSON.parse(req.body.TaskAttributes).caller_language;
       // Get the singleton instance and set the callSid
       const audioInterceptor = AudioInterceptor.getInstance({logger, server});
       audioInterceptor.setCallSidFromAcceptedReservation(callSid);
+      audioInterceptor.setCallerLanguage(callerLanguage);
       res.status(200).send('OK');
     },
   );

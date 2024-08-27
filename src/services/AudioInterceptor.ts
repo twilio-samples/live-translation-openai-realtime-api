@@ -25,6 +25,8 @@ export default class AudioInterceptor {
 
   private callSidFromOutboundMediaSocket: string | undefined;
 
+  private callerLanguage: string | undefined;
+
   #inboundSocket?: StreamSocket;
 
   #outboundSocket?: StreamSocket;
@@ -54,6 +56,11 @@ export default class AudioInterceptor {
   public setCallSidFromAcceptedReservation(callSid: string): void {
     this.callSidFromAcceptedReservation = callSid;
     this.logger.info(`Call SID set to ${callSid} in AudioInterceptor`);
+  }
+
+  public setCallerLanguage(language: string): void {
+    this.callerLanguage = language;
+    this.logger.info(`Caller language set to ${language} in AudioInterceptor`);
   }
 
   public setMediaSocketCallSid(callSid: string, track: string): void {
