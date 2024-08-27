@@ -32,7 +32,7 @@ const interceptWS: FastifyPluginAsyncTypebox = async (server) => {
           typeof customParameters.from === 'string'
         ) {
           const { callSid } = message.start;
-          const interceptor = new AudioInterceptor({ logger, server });
+          const interceptor = AudioInterceptor.getInstance({ logger, server });
           interceptor.inboundSocket = ss;
           map.set(callSid, interceptor);
           logger.info(
@@ -40,6 +40,8 @@ const interceptWS: FastifyPluginAsyncTypebox = async (server) => {
             customParameters.from,
             message.start.streamSid,
           );
+
+          interceptor.setMediaSocketCallSid(callSid, 'inbound');
 
           logger.info('Connecting to Agent');
           await twilio.calls.create({
@@ -59,6 +61,8 @@ const interceptWS: FastifyPluginAsyncTypebox = async (server) => {
             message.start.streamSid,
           );
           interceptor.outboundSocket = ss;
+          interceptor.setMediaSocketCallSid(customParameters.callSid, 'outbound');
+
         }
       });
 

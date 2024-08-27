@@ -2,15 +2,19 @@ import { FastifyBaseLogger } from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import WebSocket from 'ws';
 
-import StreamSocket, { MediaBaseAudioMessage } from '@/services/StreamSocket';
+import StreamSocket, { MediaBaseAudioMessage, StartBaseAudioMessage } from '@/services/StreamSocket';
 
 type AudioInterceptorOptions = {
   logger: FastifyBaseLogger;
   server: FastifyInstance;
 };
 export default class AudioInterceptor {
+  private static instance: AudioInterceptor;
   private readonly logger: FastifyBaseLogger;
   private server: FastifyInstance;
+  private callSidFromAcceptedReservation: string | undefined;
+  private callSidFromInboundMediaSocket: string | undefined;
+  private callSidFromOutboundMediaSocket: string | undefined;
 
   #inboundSocket?: StreamSocket;
   #outboundSocket?: StreamSocket;
@@ -19,9 +23,29 @@ export default class AudioInterceptor {
   messages = [];
   lastSpeaker = 'agent';
 
-  public constructor(options: AudioInterceptorOptions) {
+  private constructor(options: AudioInterceptorOptions) {
     this.logger = options.logger;
     this.server = options.server;
+  }
+
+  public static getInstance(options: AudioInterceptorOptions): AudioInterceptor {
+    if (!AudioInterceptor.instance) {
+      AudioInterceptor.instance = new AudioInterceptor(options);
+    }
+    return AudioInterceptor.instance;
+  }
+
+  public setCallSidFromAcceptedReservation(callSid: string): void {
+    this.callSidFromAcceptedReservation = callSid;
+    this.logger.info(`Call SID set to ${callSid} in AudioInterceptor`);
+  }
+
+  public setMediaSocketCallSid(callSid: string, track: string): void {
+    if (track === 'inbound') {
+      this.callSidFromInboundMediaSocket = callSid;
+    } else {
+      this.callSidFromOutboundMediaSocket = callSid;
+    }
   }
 
   private start() {
@@ -39,23 +63,30 @@ export default class AudioInterceptor {
 
   private translateAndForwardAudioToInbound(message: MediaBaseAudioMessage) {
     this.lastSpeaker = 'agent';
-    if (this.openAISocket) {
+    this.logger.info(this.callSidFromAcceptedReservation, 'this.callSidFromAcceptedReservation')
+    this.logger.info(this.callSidFromInboundMediaSocket, 'this.callSidFromInboundMediaSocket')
+    if(this.callSidFromAcceptedReservation && this.callSidFromOutboundMediaSocket === this.callSidFromAcceptedReservation) {
+      // We have an accepted reservation, meaning 
+      this.logger.info('WE HAVE A MATCH BETWEEN THE RESERVATION AND THE OUTBOUND MEDIA STREAM');
+    }
+
+   /* if (this.openAISocket) {
       this.forwardAudioToOpenAIForTranslation(this.openAISocket, message.media.payload);
     } else {
       this.logger.error('OpenAI WebSocket is not available.');
     }
     // Need to figure out how to send the translated audio back to the inbound socket when the event comes from the OpenAI WebSocket
-    // Looks like this can't be done synchronously.
+    // Looks like this can't be done synchronously.*/
     this.#inboundSocket.send([message.media.payload]);
   }
 
   private translateAndForwardAudioToOutbound(message: MediaBaseAudioMessage) {
     this.lastSpeaker = 'client';
-    if (this.openAISocket) {
+    /*if (this.openAISocket) {
       this.forwardAudioToOpenAIForTranslation(this.openAISocket, message.media.payload);
     } else {
       this.logger.error('OpenAI WebSocket is not available.');
-    }
+    }*/
     // Need to figure out how to send the translated audio back to the outbound socket when the event comes from the OpenAI WebSocket
     // Looks like this can't be done synchronously.
     this.#outboundSocket.send([message.media.payload]);
