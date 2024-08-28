@@ -59,7 +59,7 @@ export default class AudioInterceptor {
       return;
     }
 
-    this.logger.info('Initiating the web socket to OpenAI Realtime S2S API');
+    this.logger.info('Initiating the websocket to OpenAI Realtime S2S API');
     // Start Audio Interception
     this.logger.info('Both sockets are set. Starting interception');
     this.#inboundSocket.onMedia(
@@ -71,36 +71,19 @@ export default class AudioInterceptor {
   }
 
   private translateAndForwardAudioToInbound(message: MediaBaseAudioMessage) {
-    // if (
-    //   this.callSidFromAcceptedReservation &&
-    //   this.callSidFromOutboundMediaSocket ===
-    //     this.callSidFromAcceptedReservation
-    // ) {
-    //   // We have an accepted reservation, meaning
-    //   this.logger.info(
-    //     'WE HAVE A MATCH BETWEEN THE RESERVATION AND THE OUTBOUND MEDIA STREAM',
-    //   );
-    // }
-
-    /* if (this.#callerOpenAISocket) {
-      this.forwardAudioToOpenAIForTranslation(this.#callerOpenAISocket, message.media.payload);
+    if (this.#agentOpenAISocket) {
+      this.forwardAudioToOpenAIForTranslation(this.#agentOpenAISocket, message.media.payload);
     } else {
-      this.logger.error('OpenAI WebSocket is not available.');
+      this.logger.error('Agent OpenAI WebSocket is not available.');
     }
-    // Need to figure out how to send the translated audio back to the inbound socket when the event comes from the OpenAI WebSocket
-    // Looks like this can't be done synchronously. */
-    this.#inboundSocket.send([message.media.payload]);
   }
 
   private translateAndForwardAudioToOutbound(message: MediaBaseAudioMessage) {
-    /* if (this.#callerOpenAISocket) {
+    if (this.#callerOpenAISocket) {
       this.forwardAudioToOpenAIForTranslation(this.#callerOpenAISocket, message.media.payload);
     } else {
-      this.logger.error('OpenAI WebSocket is not available.');
-    } */
-    // Need to figure out how to send the translated audio back to the outbound socket when the event comes from the OpenAI WebSocket
-    // Looks like this can't be done synchronously.
-    this.#outboundSocket.send([message.media.payload]);
+      this.logger.error('Caller OpenAI WebSocket is not available.');
+    }
   }
 
   /**
@@ -174,21 +157,23 @@ export default class AudioInterceptor {
 
     // Event listeners for when a message is received from the server
     callerSocket.on('message', (message) => {
-      this.logger.info(message.toString(), 'Caller message from OpenAI:');
+      this.logger.info(`Caller message from OpenAI: ${message}`);
       // Handle the incoming message here
-      if (message.event === 'audio_buffer_add') {
+      const messageObject = JSON.parse(message);
+      if (messageObject.event === 'audio_buffer_add') {
         // Handle an audio message from OpenAI, post translation
         this.logger.info('Received translation from OpenAI');
-        this.#outboundSocket.send([message.data]);
+        this.#outboundSocket.send([messageObject.data]);
       }
     });
     agentSocket.on('message', (message) => {
-      this.logger.info(message.toString(), 'Agent message from OpenAI:');
+      this.logger.info(`Agent message from OpenAI: ${message.toString()}`);
       // Handle the incoming message here
-      if (message.event === 'audio_buffer_add') {
+      const messageObject = JSON.parse(message);
+      if (messageObject.event === 'audio_buffer_add') {
         // Handle an audio message from OpenAI, post translation
         this.logger.info('Received translation from OpenAI');
-        this.#inboundSocket.send([message.data]);
+        this.#inboundSocket.send([messageObject.data]);
       }
     });
 
