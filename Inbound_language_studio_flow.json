@@ -1,0 +1,221 @@
+{
+  "description": "Incoming Flow",
+  "states": [
+    {
+      "name": "Trigger",
+      "type": "trigger",
+      "transitions": [
+        {
+          "event": "incomingMessage"
+        },
+        {
+          "next": "PromptforLanguage",
+          "event": "incomingCall"
+        },
+        {
+          "event": "incomingConversationMessage"
+        },
+        {
+          "event": "incomingRequest"
+        },
+        {
+          "event": "incomingParent"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 0,
+          "y": -10
+        }
+      }
+    },
+    {
+      "name": "PromptforLanguage",
+      "type": "gather-input-on-call",
+      "transitions": [
+        {
+          "next": "CheckLanguage",
+          "event": "keypress"
+        },
+        {
+          "event": "speech"
+        },
+        {
+          "event": "timeout"
+        }
+      ],
+      "properties": {
+        "voice": "default",
+        "speech_timeout": "auto",
+        "offset": {
+          "x": 360,
+          "y": 110
+        },
+        "loop": 1,
+        "finish_on_key": "#",
+        "say": "Welcome to the AI Translator. What language would you like to speak in?\nPress 1 for Hindi\nPress 2 for Spanish\nPress 3 for German",
+        "language": "en-US",
+        "stop_gather": true,
+        "gather_language": "en",
+        "profanity_filter": "true",
+        "timeout": 5
+      }
+    },
+    {
+      "name": "CheckLanguage",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "next": "set_language_english",
+          "event": "noMatch"
+        },
+        {
+          "next": "set_language_hindi",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "If value equal_to 1",
+              "arguments": [
+                "{{widgets.PromptforLanguage.Digits}}"
+              ],
+              "type": "equal_to",
+              "value": "1"
+            }
+          ]
+        },
+        {
+          "next": "set_language_english",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "If value equal_to 3",
+              "arguments": [
+                "{{widgets.PromptforLanguage.Digits}}"
+              ],
+              "type": "equal_to",
+              "value": "3"
+            }
+          ]
+        },
+        {
+          "next": "set_language_spanish",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "If value equal_to 2",
+              "arguments": [
+                "{{widgets.PromptforLanguage.Digits}}"
+              ],
+              "type": "equal_to",
+              "value": "2"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{widgets.PromptforLanguage.Digits}}",
+        "offset": {
+          "x": 190,
+          "y": 370
+        }
+      }
+    },
+    {
+      "name": "set_language_hindi",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "redirect_1",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "type": "string",
+            "value": "hindi",
+            "key": "caller_language"
+          }
+        ],
+        "offset": {
+          "x": 100,
+          "y": 740
+        }
+      }
+    },
+    {
+      "name": "set_language_english",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "redirect_1",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "type": "string",
+            "value": "english",
+            "key": "caller_language"
+          }
+        ],
+        "offset": {
+          "x": 430,
+          "y": 760
+        }
+      }
+    },
+    {
+      "name": "set_language_spanish",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "redirect_1",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "type": "string",
+            "value": "spanish",
+            "key": "caller_language"
+          }
+        ],
+        "offset": {
+          "x": 760,
+          "y": 780
+        }
+      }
+    },
+    {
+      "name": "redirect_1",
+      "type": "add-twiml-redirect",
+      "transitions": [
+        {
+          "event": "return"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "fail"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 190,
+          "y": 1190
+        },
+        "method": "POST",
+        "url": "https://d81c646b213a.ngrok.app/incoming-call?lang={{flow.variables.caller_language}}",
+        "timeout": "14400"
+      }
+    }
+  ],
+  "initial_state": "Trigger",
+  "flags": {
+    "allow_concurrent_calls": true
+  }
+}

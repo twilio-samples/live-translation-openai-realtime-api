@@ -8,6 +8,7 @@ import { Config } from '@/config';
 type AudioInterceptorOptions = {
   logger: FastifyBaseLogger;
   config: Config;
+  callerLanguage: string;
 };
 export default class AudioInterceptor {
   private static instance: AudioInterceptor;
@@ -31,7 +32,7 @@ export default class AudioInterceptor {
   public constructor(options: AudioInterceptorOptions) {
     this.logger = options.logger;
     this.config = options.config;
-
+    this.callerLanguage = options.callerLanguage;
     this.setupOpenAISocket();
   }
 
