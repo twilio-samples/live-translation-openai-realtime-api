@@ -27,6 +27,8 @@ export default class AudioInterceptor {
 
   #agentOpenAISocket?: WebSocket;
 
+  #agentFirstAudioTime?: string;
+
   messages = [];
 
   public constructor(options: AudioInterceptorOptions) {
@@ -71,10 +73,18 @@ export default class AudioInterceptor {
   }
 
   private translateAndForwardAudioToInbound(message: MediaBaseAudioMessage) {
-    if (this.#agentOpenAISocket) {
-      this.forwardAudioToOpenAIForTranslation(this.#agentOpenAISocket, message.media.payload);
-    } else {
-      this.logger.error('Agent OpenAI WebSocket is not available.');
+    // Wait for 1 second after the first time we hear audio from the agent
+    // This ensures that we don't send beeps from Flex to OpenAI when the call
+    // first connects
+    const currentTime = new Date().getTime();
+    if (!this.#agentFirstAudioTime) {
+      this.#agentFirstAudioTime = currentTime;
+    } else if (currentTime - this.#agentFirstAudioTime >= 1000) {
+      if (this.#agentOpenAISocket) {
+        this.forwardAudioToOpenAIForTranslation(this.#agentOpenAISocket, message.media.payload);
+      } else {
+        this.logger.error('Agent OpenAI WebSocket is not available.');
+      }
     }
   }
 
@@ -162,7 +172,7 @@ export default class AudioInterceptor {
       const messageObject = JSON.parse(message);
       if (messageObject.event === 'audio_buffer_add') {
         // Handle an audio message from OpenAI, post translation
-        this.logger.info('Received translation from OpenAI');
+        this.logger.info('Received caller translation from OpenAI');
         this.#outboundSocket.send([messageObject.data]);
       }
     });
@@ -172,7 +182,7 @@ export default class AudioInterceptor {
       const messageObject = JSON.parse(message);
       if (messageObject.event === 'audio_buffer_add') {
         // Handle an audio message from OpenAI, post translation
-        this.logger.info('Received translation from OpenAI');
+        this.logger.info('Received agent translation from OpenAI');
         this.#inboundSocket.send([messageObject.data]);
       }
     });
