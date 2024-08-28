@@ -35,6 +35,10 @@ const incomingCall: FastifyPluginAsync = async (server) => {
           name: 'from',
           value: req.body.From,
         });
+        stream.parameter({
+          name: 'lang',
+          value: req.query.lang,
+        });
 
         logger.info('Sending TwiML response...');
         reply.type('text/xml');
