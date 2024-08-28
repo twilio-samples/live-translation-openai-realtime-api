@@ -23,17 +23,17 @@ export default class AudioInterceptor {
 
   #outboundSocket?: StreamSocket;
 
-  private openAISocket?: WebSocket;
+  #callerOpenAISocket?: WebSocket;
+
+  #agentOpenAISocket?: WebSocket;
 
   messages = [];
-
-  lastSpeaker = 'agent';
 
   public constructor(options: AudioInterceptorOptions) {
     this.logger = options.logger;
     this.config = options.config;
     this.callerLanguage = options.callerLanguage;
-    this.setupOpenAISocket();
+    this.setupOpenAISockets();
   }
 
   public close() {
@@ -45,8 +45,11 @@ export default class AudioInterceptor {
       this.#outboundSocket.close();
       this.#outboundSocket = null;
     }
-    if (this.openAISocket) {
-      this.openAISocket.close();
+    if (this.#callerOpenAISocket) {
+      this.#callerOpenAISocket.close();
+    }
+    if (this.#agentOpenAISocket) {
+      this.#agentOpenAISocket.close();
     }
   }
 
@@ -68,7 +71,6 @@ export default class AudioInterceptor {
   }
 
   private translateAndForwardAudioToInbound(message: MediaBaseAudioMessage) {
-    this.lastSpeaker = 'agent';
     // if (
     //   this.callSidFromAcceptedReservation &&
     //   this.callSidFromOutboundMediaSocket ===
@@ -80,8 +82,8 @@ export default class AudioInterceptor {
     //   );
     // }
 
-    /* if (this.openAISocket) {
-      this.forwardAudioToOpenAIForTranslation(this.openAISocket, message.media.payload);
+    /* if (this.#callerOpenAISocket) {
+      this.forwardAudioToOpenAIForTranslation(this.#callerOpenAISocket, message.media.payload);
     } else {
       this.logger.error('OpenAI WebSocket is not available.');
     }
@@ -91,9 +93,8 @@ export default class AudioInterceptor {
   }
 
   private translateAndForwardAudioToOutbound(message: MediaBaseAudioMessage) {
-    this.lastSpeaker = 'client';
-    /* if (this.openAISocket) {
-      this.forwardAudioToOpenAIForTranslation(this.openAISocket, message.media.payload);
+    /* if (this.#callerOpenAISocket) {
+      this.forwardAudioToOpenAIForTranslation(this.#callerOpenAISocket, message.media.payload);
     } else {
       this.logger.error('OpenAI WebSocket is not available.');
     } */
@@ -106,24 +107,44 @@ export default class AudioInterceptor {
    * Setup the WebSocket connection to OpenAI Realtime S2S API
    * @private
    */
-  private setupOpenAISocket() {
+  private setupOpenAISockets() {
     const url = 'wss://api.openai.com/v1/realtime';
-    const socket = new WebSocket(url, {
+    const callerSocket = new WebSocket(url, {
       headers: {
         Authorization: `Bearer ${this.config.OPENAI_API_KEY}`,
       },
     });
-    const prompt = this.config.AI_AGENT_PROMPT.replace(
+    const agentSocket = new WebSocket(url, {
+      headers: {
+        Authorization: `Bearer ${this.config.OPENAI_API_KEY}`,
+      },
+    });
+    const callerPrompt = this.config.AI_PROMPT_CALLER.replace(
+      /\[CALLER_LANGUAGE\]/g,
+      this.callerLanguage,
+    );
+    const agentPrompt = this.config.AI_PROMPT_AGENT.replace(
       /\[CALLER_LANGUAGE\]/g,
       this.callerLanguage,
     );
 
-    // Store the WebSocket instance
-    this.openAISocket = socket;
-    // Configure the Realtime AI Agent
-    const configMsg = {
+    // Store the WebSocket instances
+    this.#callerOpenAISocket = callerSocket;
+    this.#agentOpenAISocket = agentSocket;
+
+    // Configure the Realtime AI Agents
+    const callerConfigMsg = {
       event: 'set_inference_config',
-      system_message: prompt,
+      system_message: callerPrompt,
+      turn_end_type: 'server_detection',
+      voice: 'alloy',
+      tool_choice: 'none',
+      disable_audio: false,
+      audio_format: 'g711-ulaw',
+    };
+    const agentConfigMsg = {
+      event: 'set_inference_config',
+      system_message: agentPrompt,
       turn_end_type: 'server_detection',
       voice: 'alloy',
       tool_choice: 'none',
@@ -131,36 +152,61 @@ export default class AudioInterceptor {
       audio_format: 'g711-ulaw',
     };
 
-    // Event listener for when the connection is opened
-    socket.on('open', () => {
-      this.logger.info('WebSocket connection to OpenAI is open now.');
+    // Event listeners for when the connection is opened
+    callerSocket.on('open', () => {
+      this.logger.info('Caller webSocket connection to OpenAI is open now.');
       // Send the initial prompt/config message to OpenAI for the Translation Agent.
-      this.sendMessageToOpenAI(socket, configMsg);
+      this.sendMessageToOpenAI(callerSocket, callerConfigMsg);
       this.logger.info(
-        configMsg,
-        'Session has been configured with the following settings:',
+        callerConfigMsg,
+        'Caller session has been configured with the following settings:',
+      );
+    });
+    agentSocket.on('open', () => {
+      this.logger.info('Agent webSocket connection to OpenAI is open now.');
+      // Send the initial prompt/config message to OpenAI for the Translation Agent.
+      this.sendMessageToOpenAI(agentSocket, agentConfigMsg);
+      this.logger.info(
+        agentConfigMsg,
+        'Agent session has been configured with the following settings:',
       );
     });
 
-    // Event listener for when a message is received from the server
-    socket.on('message', (data) => {
-      this.logger.info(data.toString(), 'Message from OpenAI:');
+    // Event listeners for when a message is received from the server
+    callerSocket.on('message', (message) => {
+      this.logger.info(message.toString(), 'Caller message from OpenAI:');
       // Handle the incoming message here
-      if (data.event === 'audio_buffer_add') {
+      if (message.event === 'audio_buffer_add') {
         // Handle an audio message from OpenAI, post translation
         this.logger.info('Received translation from OpenAI');
-        this.handleTranslatedAudioFromOpenAI(data);
+        this.#outboundSocket.send([message.data]);
+      }
+    });
+    agentSocket.on('message', (message) => {
+      this.logger.info(message.toString(), 'Agent message from OpenAI:');
+      // Handle the incoming message here
+      if (message.event === 'audio_buffer_add') {
+        // Handle an audio message from OpenAI, post translation
+        this.logger.info('Received translation from OpenAI');
+        this.#inboundSocket.send([message.data]);
       }
     });
 
-    // Event listener for when an error occurs
-    socket.on('error', (error) => {
-      this.logger.error('WebSocket error:', error);
+    // Event listeners for when an error occurs
+    callerSocket.on('error', (error) => {
+      this.logger.error('Caller webSocket error:', error);
+    });
+    agentSocket.on('error', (error) => {
+      this.logger.error('Agent webSocket error:', error);
     });
 
-    // Event listener for when the connection is closed
-    socket.on('close', () => {
-      this.logger.info('WebSocket connection to OpenAI is closed now.');
+    // Event listeners for when the connection is closed
+    callerSocket.on('close', () => {
+      this.logger.info('Caller webSocket connection to OpenAI is closed now.');
+    });
+
+    agentSocket.on('close', () => {
+      this.logger.info('Caller webSocket connection to OpenAI is closed now.');
     });
   }
 
@@ -169,15 +215,6 @@ export default class AudioInterceptor {
       event: 'audio_buffer_add',
       data: audio,
     });
-  }
-
-  private handleTranslatedAudioFromOpenAI(message: object) {
-    if (this.lastSpeaker === 'agent') {
-      this.#inboundSocket.send([message.data]);
-    } else {
-      // Last speaker is client
-      this.#outboundSocket.send([message.data]);
-    }
   }
 
   private sendMessageToOpenAI(socket: WebSocket, message: object) {
