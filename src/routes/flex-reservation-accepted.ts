@@ -27,7 +27,8 @@ const flexReservationAccepted: FastifyPluginAsync = async (server) => {
       const audioInterceptor = map.get(from);
       if (!audioInterceptor) {
         logger.error('AudioInterceptor not found');
-        return res.status(404).send('Not Found');
+        res.status(404).send('Not Found');
+        return;
       }
 
       audioInterceptor.start();

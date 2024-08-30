@@ -1,7 +1,6 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { FastifyBaseLogger } from 'fastify';
 import Twilio from 'twilio';
-import TwiML from 'twilio/lib/twiml/TwiML';
 
 import AudioInterceptor from '@/services/AudioInterceptor';
 import StreamSocket, { StartBaseAudioMessage } from '@/services/StreamSocket';
@@ -36,7 +35,7 @@ const interceptWS: FastifyPluginAsyncTypebox = async (server) => {
           const interceptor = new AudioInterceptor({
             logger,
             config: server.config,
-            callerLanguage: customParameters.lang.toString()
+            callerLanguage: customParameters.lang.toString(),
           });
           interceptor.inboundSocket = ss;
           map.set(customParameters.from, interceptor);
