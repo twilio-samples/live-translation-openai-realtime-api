@@ -1,15 +1,30 @@
 import { FastifyBaseLogger } from 'fastify';
-import type { FastifyInstance } from 'fastify';
 import WebSocket from 'ws';
 
 import StreamSocket, { MediaBaseAudioMessage } from '@/services/StreamSocket';
 import { Config } from '@/config';
+import { AI_PROMPT_AGENT, AI_PROMPT_CALLER } from '@/prompts';
 
 type AudioInterceptorOptions = {
   logger: FastifyBaseLogger;
   config: Config;
   callerLanguage: string;
 };
+
+type BufferedMessage = {
+  message_id: string;
+  first_audio_buffer_add_time?: number;
+  vad_speech_stopped_time: number;
+};
+
+type OpenAIMessage = {
+  message_id: string;
+  first_audio_buffer_add_time?: number;
+  vad_speech_stopped_time: number;
+  event: 'vad_speech_stopped' | 'audio_buffer_add';
+  data: string;
+};
+
 export default class AudioInterceptor {
   private static instance: AudioInterceptor;
 
@@ -17,7 +32,7 @@ export default class AudioInterceptor {
 
   private config: Config;
 
-  private callerLanguage: string | undefined;
+  private readonly callerLanguage?: string;
 
   #inboundSocket?: StreamSocket;
 
@@ -27,11 +42,11 @@ export default class AudioInterceptor {
 
   #agentOpenAISocket?: WebSocket;
 
-  #agentFirstAudioTime?: string;
+  #agentFirstAudioTime?: number;
 
-  #callerMessages?: Object[];
+  #callerMessages?: BufferedMessage[];
 
-  #agentMessages?: Object[];
+  #agentMessages?: BufferedMessage[];
 
   public constructor(options: AudioInterceptorOptions) {
     this.logger = options.logger;
@@ -40,6 +55,9 @@ export default class AudioInterceptor {
     this.setupOpenAISockets();
   }
 
+  /**
+   * Closes the audio interceptor
+   */
   public close() {
     if (this.#inboundSocket) {
       this.#inboundSocket.close();
@@ -55,14 +73,20 @@ export default class AudioInterceptor {
     if (this.#agentOpenAISocket) {
       this.#agentOpenAISocket.close();
     }
-    const callerAverageTimeToFirstAudioBufferAdd = this.reportOnSocketTimeToFirstAudioBufferAdd(this.#callerMessages);
-    this.logger.info(`callerAverageTimeToFirstAudioBufferAdd = ${callerAverageTimeToFirstAudioBufferAdd}`);
-    const agentAverageTimeToFirstAudioBufferAdd = this.reportOnSocketTimeToFirstAudioBufferAdd(this.#agentMessages);
-    this.logger.info(`agentAverageTimeToFirstAudioBufferAdd = ${agentAverageTimeToFirstAudioBufferAdd}`);
-    const combinedAverageTimeToFirstAudioBufferAdd = (callerAverageTimeToFirstAudioBufferAdd + agentAverageTimeToFirstAudioBufferAdd) / 2;
-    this.logger.info(`combinedAverageTimeToFirstAudioBufferAdd = ${combinedAverageTimeToFirstAudioBufferAdd}`);
+
+    const callerTime = this.reportOnSocketTimeToFirstAudioBufferAdd(
+      this.#callerMessages,
+    );
+    this.logger.info(`callerAverageTimeToFirstAudioBufferAdd = ${callerTime}`);
+    const agentTime = this.reportOnSocketTimeToFirstAudioBufferAdd(
+      this.#agentMessages,
+    );
+    this.logger.info(`agentAverageTimeToFirstAudioBufferAdd = ${agentTime}`);
   }
 
+  /**
+   * Starts the audio interception
+   */
   public start() {
     if (!this.#outboundSocket || !this.#inboundSocket) {
       this.logger.error('Both sockets are not set. Cannot start interception');
@@ -84,12 +108,15 @@ export default class AudioInterceptor {
     // Wait for 1 second after the first time we hear audio from the agent
     // This ensures that we don't send beeps from Flex to OpenAI when the call
     // first connects
-    const currentTime = new Date().getTime();
+    const now = new Date().getTime();
     if (!this.#agentFirstAudioTime) {
-      this.#agentFirstAudioTime = currentTime;
-    } else if (currentTime - this.#agentFirstAudioTime >= 1000) {
+      this.#agentFirstAudioTime = now;
+    } else if (now - this.#agentFirstAudioTime >= 1000) {
       if (this.#agentOpenAISocket) {
-        this.forwardAudioToOpenAIForTranslation(this.#agentOpenAISocket, message.media.payload);
+        this.forwardAudioToOpenAIForTranslation(
+          this.#agentOpenAISocket,
+          message.media.payload,
+        );
       } else {
         this.logger.error('Agent OpenAI WebSocket is not available.');
       }
@@ -97,11 +124,15 @@ export default class AudioInterceptor {
   }
 
   private translateAndForwardAudioToOutbound(message: MediaBaseAudioMessage) {
-    if (this.#callerOpenAISocket) {
-      this.forwardAudioToOpenAIForTranslation(this.#callerOpenAISocket, message.media.payload);
-    } else {
+    if (!this.#callerOpenAISocket) {
       this.logger.error('Caller OpenAI WebSocket is not available.');
+      return;
     }
+
+    this.forwardAudioToOpenAIForTranslation(
+      this.#callerOpenAISocket,
+      message.media.payload,
+    );
   }
 
   /**
@@ -120,11 +151,11 @@ export default class AudioInterceptor {
         Authorization: `Bearer ${this.config.OPENAI_API_KEY}`,
       },
     });
-    const callerPrompt = this.config.AI_PROMPT_CALLER.replace(
+    const callerPrompt = AI_PROMPT_CALLER.replace(
       /\[CALLER_LANGUAGE\]/g,
       this.callerLanguage,
     );
-    const agentPrompt = this.config.AI_PROMPT_AGENT.replace(
+    const agentPrompt = AI_PROMPT_AGENT.replace(
       /\[CALLER_LANGUAGE\]/g,
       this.callerLanguage,
     );
@@ -174,56 +205,66 @@ export default class AudioInterceptor {
     });
 
     // Event listeners for when a message is received from the server
-    callerSocket.on('message', (message) => {
-      this.logger.info(`Caller message from OpenAI: ${message}`);
+    callerSocket.on('message', (msg) => {
+      this.logger.info(`Caller message from OpenAI: ${msg}`);
       const currentTime = new Date().getTime();
-      const messageObject = JSON.parse(message);
-      if (messageObject.event === 'vad_speech_stopped') {
+      const message = JSON.parse(msg) as OpenAIMessage;
+      if (message.event === 'vad_speech_stopped') {
         if (!this.#callerMessages) {
           this.#callerMessages = [];
         }
         this.#callerMessages.push({
-          message_id: messageObject.message_id,
-          vad_speech_stopped_time: currentTime
+          message_id: message.message_id,
+          vad_speech_stopped_time: currentTime,
         });
       }
-      if (messageObject.event === 'audio_buffer_add') {
+      if (message.event === 'audio_buffer_add') {
         // Handle an audio message from OpenAI, post translation
         this.logger.info('Received caller translation from OpenAI');
-        if (!this.#callerMessages[this.#callerMessages.length - 1].first_audio_buffer_add_time) {
-          this.#callerMessages[this.#callerMessages.length - 1].first_audio_buffer_add_time = currentTime;
+        if (
+          !this.#callerMessages[this.#callerMessages.length - 1]
+            .first_audio_buffer_add_time
+        ) {
+          this.#callerMessages[
+            this.#callerMessages.length - 1
+          ].first_audio_buffer_add_time = currentTime;
         }
-        this.#outboundSocket.send([messageObject.data]);
+        this.#outboundSocket.send([message.data]);
       }
     });
-    agentSocket.on('message', (message) => {
-      this.logger.info(`Agent message from OpenAI: ${message.toString()}`);
+    agentSocket.on('message', (msg) => {
+      this.logger.info(`Agent message from OpenAI: ${msg.toString()}`);
       const currentTime = new Date().getTime();
-      const messageObject = JSON.parse(message);
-      if (messageObject.event === 'vad_speech_stopped') {
+      const message = JSON.parse(msg);
+      if (message.event === 'vad_speech_stopped') {
         if (!this.#agentMessages) {
           this.#agentMessages = [];
         }
         this.#agentMessages.push({
-          message_id: messageObject.message_id,
-          vad_speech_stopped_time: currentTime
+          message_id: message.message_id,
+          vad_speech_stopped_time: currentTime,
         });
       }
-      if (messageObject.event === 'audio_buffer_add') {
+      if (message.event === 'audio_buffer_add') {
         // Handle an audio message from OpenAI, post translation
         this.logger.info('Received agent translation from OpenAI');
-        if (!this.#agentMessages[this.#agentMessages.length - 1].first_audio_buffer_add_time) {
-          this.#agentMessages[this.#agentMessages.length - 1].first_audio_buffer_add_time = currentTime;
+        if (
+          !this.#agentMessages[this.#agentMessages.length - 1]
+            .first_audio_buffer_add_time
+        ) {
+          this.#agentMessages[
+            this.#agentMessages.length - 1
+          ].first_audio_buffer_add_time = currentTime;
         }
-        this.#inboundSocket.send([messageObject.data]);
+        this.#inboundSocket.send([message.data]);
       }
     });
 
     // Event listeners for when an error occurs
-    callerSocket.on('error', (error) => {
+    callerSocket.on('error', (error: Error) => {
       this.logger.error('Caller webSocket error:', error);
     });
-    agentSocket.on('error', (error) => {
+    agentSocket.on('error', (error: Error) => {
       this.logger.error('Agent webSocket error:', error);
     });
 
@@ -237,20 +278,17 @@ export default class AudioInterceptor {
     });
   }
 
-  private reportOnSocketTimeToFirstAudioBufferAdd(messages: Object[]) {
-    let numMessagesWithAudioBufferAdd = 0;
-    let totalTimeToFirstAudioBufferAdd = 0;
-    messages.forEach((message) => {
-      // Only report on messages that have an associated audio_buffer_add
-      if (message.first_audio_buffer_add_time) {
-        numMessagesWithAudioBufferAdd++;
-        const timeToFirstAudioBufferAdd = message.first_audio_buffer_add_time - message.vad_speech_stopped_time;
-        this.logger.info(`Message ${message.message_id} timeToFirstAudioBufferAdd = ${timeToFirstAudioBufferAdd}`);
-        totalTimeToFirstAudioBufferAdd = totalTimeToFirstAudioBufferAdd + timeToFirstAudioBufferAdd;
-      }
-    });
-    const averageTimeToFirstAudioBufferAdd = totalTimeToFirstAudioBufferAdd / numMessagesWithAudioBufferAdd;
-    return averageTimeToFirstAudioBufferAdd;
+  private reportOnSocketTimeToFirstAudioBufferAdd(messages: BufferedMessage[]) {
+    const filtered = messages.filter(
+      (message) => message.first_audio_buffer_add_time,
+    );
+    const totalTime = filtered.reduce(
+      (acc, { first_audio_buffer_add_time, vad_speech_stopped_time }) =>
+        acc + (first_audio_buffer_add_time - vad_speech_stopped_time),
+      0,
+    );
+
+    return totalTime / filtered.length;
   }
 
   private forwardAudioToOpenAIForTranslation(socket: WebSocket, audio: String) {
