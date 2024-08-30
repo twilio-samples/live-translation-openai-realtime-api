@@ -16,47 +16,55 @@ The eventual flow of the application is as follows.
 - The `Agent` represents the human agent who will be connected to the call via Twilio Flex.
 
 ```mermaid
-
 sequenceDiagram
     actor Customer
     participant Voice/Studio
-    participant Assistant
-    participant S2S LLM
+    participant BMV
+    participant S2S
     actor Agent
 
-    Customer->>Voice/Studio: Calls Number
-    Voice/Studio->>Customer: Say "Welcome to Tweek RealTime Translation. Press 1 for English, 2 for Spanish, 3 for Hindi."
-    Customer->>Voice/Studio: Press 1
+    Customer ->> Voice/Studio: Initiates Call
+    Voice/Studio -->> Customer: <Say>Welcome to Be My Voice.<br>Your call will be transferred to an AI Assistant.<br>What language would you like to use?</Say><br><Gather ...>
+    Customer -->> Voice/Studio: (Customer selects language)
     
-    Voice/Studio->>Assistant: [HTTP] POST /incoming-call
-    Assistant->>Voice/Studio: Initiate Media Stream 1
-    Voice/Studio->>Client: Say "Please wait while we connect you to an agent (in language selected)"
-    Voice/Studio->>Assistant: [WS] Establish Websocket Connection
-    Assistant->>Voice/Studio: [HTTP] Call Agent
-    Voice/Studio->>Agent: Incoming Task
-    Voice/Studio->>Agent: [WS] Establish Websocket Connection
+    Voice/Studio ->> +BMV: [HTTP] POST /incoming-call
+    BMV -->> -Voice/Studio: <Say>...</Say><br><Connect><Stream ... /></Connect>
+    Voice/Studio -->> Customer: <Say>Please wait while we connect you.</Say>
+    
+    Customer ->> +BMV: [WS] Initiate Media Stream
+    activate Customer
+    activate BMV
+    activate S2S
+    BMV ->> +S2S: [WS] Establish Websocket Connection to OpenAI
 
-%%    Middleware App->>S2S LLM: Initiate Realtime Websocket with translation prompt
-%%    Middleware App->>Voice/Studio: Initiate Call 2 (Programmatic)
-%%    Voice/Studio->>Staff: Connect Call 2
-%%    Voice/Studio->>Middleware App: Initiate Media Stream 2
-%%    Middleware App->>Staff: Say "You are now connected. Go ahead"
-%%    Middleware App->>Voice/Studio: Confirm ready for translation
-%%    Voice/Studio->>Staff: Say "Hello, this call is being facilitated by an AI Agent so each of you can speak in your preferred language. One moment."
-%%
-%%    Client->>Voice/Studio: User 1 Speaks in [Hindi]
-%%    Voice/Studio->>Middleware App: Stream to Middleware via Media Stream 1
-%%    Middleware App->>S2S LLM: Send Audio to S2S (via Websocket)
-%%    S2S LLM->>Middleware App: S2S Translation to English (Audio Output)
-%%    Middleware App->>Voice/Studio: Stream Translated English Audio via Media Stream 2
-%%
-%%    Staff->>Voice/Studio: User 2 Speaks in [English]
-%%    Voice/Studio->>Middleware App: Stream to Middleware via Media Stream 2
-%%    Middleware App->>S2S LLM: Send Audio to S2S (via Websocket)
-%%    S2S LLM->>Middleware App: S2S Translation to Hindi (Audio Output)
-%%    Middleware App->>Voice/Studio: Stream Translated [Hindi] Audio via Media Stream 1
-%%
-%%    Voice/Studio->>Client: Conversation Continues
-%%    Voice/Studio->>Staff: Conversation Continues
-```
+    BMV ->> Voice/Studio: [HTTP] Create Call (to Agent)<br>with TwiML <Connect><Stream ... /></Connect>
+    Voice/Studio -->> Agent: Incoming Task
+    Agent ->> BMV: [WS] Establish Websocket Connection
+    activate Agent
+    Agent ->>+ BMV: [HTTP] Accept Task
+    BMV -->>- Agent: Ok 200
+    note right of BMV: BMV is now intercepting both <br>Agent and Customer Media Stream
+    note right of BMV: For every Media that comes, stream the data to S2S<br>and stream the response back to Agent/Customer
+    note right of BMV: For example, it may look something like
+    
+    loop A conversation loop
+    Customer ->> BMV: [WS] (Speaks in their language)
+    BMV ->> S2S: [WS] Stream audio in original language
+    S2S -->> BMV: [WS] Audio stream in English
+    BMV ->> Agent: [WS] Steam audio to Agent in English
+    Agent -->> BMV: [WS] (Replies in English)
+    BMV ->> S2S: [WS] Stream audio in English language
+    S2S -->> BMV: [WS] Audio stream in original language
+    BMV ->> Customer: [WS] Stream audio to Customer in original language
+    end 
 
+
+    note right of BMV: At some point, the conversation over<br>and the Customer hangs up
+    BMV -->> Customer: [WS] Close
+    deactivate Customer
+
+    BMV -->> S2S: [WS] Close
+    deactivate S2S
+    BMV -->> Agent: [WS] Close
+    deactivate BMV
+    deactivate Agent
