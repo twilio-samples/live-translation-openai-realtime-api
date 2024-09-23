@@ -144,11 +144,13 @@ export default class AudioInterceptor {
     const callerSocket = new WebSocket(url, {
       headers: {
         Authorization: `Bearer ${this.config.OPENAI_API_KEY}`,
+        'OpenAI-Beta': 'realtime=v1'
       },
     });
     const agentSocket = new WebSocket(url, {
       headers: {
         Authorization: `Bearer ${this.config.OPENAI_API_KEY}`,
+        'OpenAI-Beta': 'realtime=v1'
       },
     });
     const callerPrompt = AI_PROMPT_CALLER.replace(
