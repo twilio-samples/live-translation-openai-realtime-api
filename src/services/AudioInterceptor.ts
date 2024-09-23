@@ -178,8 +178,8 @@ export default class AudioInterceptor {
         input_audio_transcription: {model: 'whisper-1'},
         turn_dedection: {type: 'server_vad'},
         tools: null,
-        //Setting temperature to 0 to get deterministic translation results
-        temperature: 0.0
+        //Setting temperature to minimum allowed value to get deterministic translation results
+        temperature: 0.6
       }
     }
     const agentConfigMsg = {
@@ -193,8 +193,8 @@ export default class AudioInterceptor {
         input_audio_transcription: {model: 'whisper-1'},
         turn_dedection: {type: 'server_vad'},
         tools: null,
-        //Setting temperature to 0 to get deterministic translation results
-        temperature: 0.0
+        //Setting temperature to minimum allowed value to get deterministic translation results
+        temperature: 0.6
       }
     }
 
