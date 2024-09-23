@@ -176,7 +176,7 @@ export default class AudioInterceptor {
         input_audio_format: 'g711_ulaw',
         output_audio_format: 'g711_ulaw',
         input_audio_transcription: {model: 'whisper-1'},
-        turn_dedection: {type: 'server_vad'},
+        turn_detection: {type: 'server_vad'},
         tools: null,
         //Setting temperature to minimum allowed value to get deterministic translation results
         temperature: 0.6
@@ -191,7 +191,7 @@ export default class AudioInterceptor {
         input_audio_format: 'g711_ulaw',
         output_audio_format: 'g711_ulaw',
         input_audio_transcription: {model: 'whisper-1'},
-        turn_dedection: {type: 'server_vad'},
+        turn_detection: {type: 'server_vad'},
         tools: null,
         //Setting temperature to minimum allowed value to get deterministic translation results
         temperature: 0.6
