@@ -166,25 +166,37 @@ export default class AudioInterceptor {
     this.#callerOpenAISocket = callerSocket;
     this.#agentOpenAISocket = agentSocket;
 
-    // Configure the Realtime AI Agents
+    // Configure the Realtime AI Agents with new 'session.update' client event
     const callerConfigMsg = {
-      event: 'set_inference_config',
-      system_message: callerPrompt,
-      turn_end_type: 'server_detection',
-      voice: 'alloy',
-      tool_choice: 'none',
-      disable_audio: false,
-      audio_format: 'g711-ulaw',
-    };
+      type: 'session.update',
+      session: {
+        modalities: ['text', 'audio'],
+        instructions: callerPrompt,
+        voice: 'alloy',
+        input_audio_format: 'g711-ulaw',
+        output_audio_format: 'g711-ulaw',
+        input_audio_transcription: {model: 'whisper-1'},
+        turn_dedection: {type: 'server_vad'},
+        tools: null,
+        //Setting temperature to 0 to get deterministic translation results
+        temperature: 0.0
+      }
+    }
     const agentConfigMsg = {
-      event: 'set_inference_config',
-      system_message: agentPrompt,
-      turn_end_type: 'server_detection',
-      voice: 'alloy',
-      tool_choice: 'none',
-      disable_audio: false,
-      audio_format: 'g711-ulaw',
-    };
+      type: 'session.update',
+      session: {
+        modalities: ['text', 'audio'],
+        instructions: agentPrompt,
+        voice: 'alloy',
+        input_audio_format: 'g711-ulaw',
+        output_audio_format: 'g711-ulaw',
+        input_audio_transcription: {model: 'whisper-1'},
+        turn_dedection: {type: 'server_vad'},
+        tools: null,
+        //Setting temperature to 0 to get deterministic translation results
+        temperature: 0.0
+      }
+    }
 
     // Event listeners for when the connection is opened
     callerSocket.on('open', () => {
