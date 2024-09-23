@@ -21,7 +21,7 @@ type OpenAIMessage = {
   event_id: string;
   first_audio_buffer_add_time?: number;
   vad_speech_stopped_time: number;
-  type: 'response.audio.delta' | 'input_audio_buffer.speech_stopped';
+  type: string;
   delta: string;
 };
 
@@ -172,12 +172,10 @@ export default class AudioInterceptor {
       session: {
         modalities: ['text', 'audio'],
         instructions: callerPrompt,
-        voice: 'alloy',
         input_audio_format: 'g711_ulaw',
         output_audio_format: 'g711_ulaw',
         input_audio_transcription: {model: 'whisper-1'},
         turn_detection: {type: 'server_vad'},
-        tools: null,
         //Setting temperature to minimum allowed value to get deterministic translation results
         temperature: 0.6
       }
@@ -187,12 +185,10 @@ export default class AudioInterceptor {
       session: {
         modalities: ['text', 'audio'],
         instructions: agentPrompt,
-        voice: 'alloy',
         input_audio_format: 'g711_ulaw',
         output_audio_format: 'g711_ulaw',
         input_audio_transcription: {model: 'whisper-1'},
         turn_detection: {type: 'server_vad'},
-        tools: null,
         //Setting temperature to minimum allowed value to get deterministic translation results
         temperature: 0.6
       }
