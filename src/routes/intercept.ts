@@ -37,7 +37,7 @@ const interceptWS: FastifyPluginAsyncTypebox = async (server) => {
             config: server.config,
             callerLanguage: customParameters.lang.toString(),
           });
-          interceptor.inboundSocket = ss;
+          interceptor.callerSocket = ss;
           map.set(customParameters.from, interceptor);
           logger.info(
             'Added inbound interceptor for %s with streamSid %s for callSid',
@@ -82,7 +82,7 @@ const interceptWS: FastifyPluginAsyncTypebox = async (server) => {
             'Added outbound interceptor with streamSid %s',
             message.start.streamSid,
           );
-          interceptor.outboundSocket = ss;
+          interceptor.agentSocket = ss;
         }
       });
 
