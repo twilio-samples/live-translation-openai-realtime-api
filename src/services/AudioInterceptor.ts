@@ -97,14 +97,14 @@ export default class AudioInterceptor {
     // Start Audio Interception
     this.logger.info('Both sockets are set. Starting interception');
     this.#callerSocket.onMedia(
-      this.translateAndForwardAudioToAgent.bind(this),
+      this.translateAndForwardCallerAudio.bind(this),
     );
     this.#agentSocket.onMedia(
-      this.translateAndForwardAudioToCaller.bind(this),
+      this.translateAndForwardAgentAudio.bind(this),
     );
   }
 
-  private translateAndForwardAudioToCaller(message: MediaBaseAudioMessage) {
+  private translateAndForwardAgentAudio(message: MediaBaseAudioMessage) {
     this.#callerSocket.send([message.media.payload]);
     // Wait for 1 second after the first time we hear audio from the agent
     // This ensures that we don't send beeps from Flex to OpenAI when the call
@@ -125,7 +125,7 @@ export default class AudioInterceptor {
     }
   }
 
-  private translateAndForwardAudioToAgent(message: MediaBaseAudioMessage) {
+  private translateAndForwardCallerAudio(message: MediaBaseAudioMessage) {
     this.#agentSocket.send([message.media.payload]);
     if (!this.#callerOpenAISocket) {
       this.logger.error('Caller OpenAI WebSocket is not available.');
