@@ -34,9 +34,9 @@ export default class AudioInterceptor {
 
   private readonly callerLanguage?: string;
 
-  #inboundSocket?: StreamSocket;
+  #callerSocket?: StreamSocket;
 
-  #outboundSocket?: StreamSocket;
+  #agentSocket?: StreamSocket;
 
   #callerOpenAISocket?: WebSocket;
 
@@ -59,13 +59,13 @@ export default class AudioInterceptor {
    * Closes the audio interceptor
    */
   public close() {
-    if (this.#inboundSocket) {
-      this.#inboundSocket.close();
-      this.#inboundSocket = null;
+    if (this.#callerSocket) {
+      this.#callerSocket.close();
+      this.#callerSocket = null;
     }
-    if (this.#outboundSocket) {
-      this.#outboundSocket.close();
-      this.#outboundSocket = null;
+    if (this.#agentSocket) {
+      this.#agentSocket.close();
+      this.#agentSocket = null;
     }
     if (this.#callerOpenAISocket) {
       this.#callerOpenAISocket.close();
@@ -88,7 +88,7 @@ export default class AudioInterceptor {
    * Starts the audio interception
    */
   public start() {
-    if (!this.#outboundSocket || !this.#inboundSocket) {
+    if (!this.#agentSocket || !this.#callerSocket) {
       this.logger.error('Both sockets are not set. Cannot start interception');
       return;
     }
@@ -96,15 +96,15 @@ export default class AudioInterceptor {
     this.logger.info('Initiating the websocket to OpenAI Realtime S2S API');
     // Start Audio Interception
     this.logger.info('Both sockets are set. Starting interception');
-    this.#inboundSocket.onMedia(
-      this.translateAndForwardAudioToOutbound.bind(this),
+    this.#callerSocket.onMedia(
+      this.translateAndForwardAudioToAgent.bind(this),
     );
-    this.#outboundSocket.onMedia(
-      this.translateAndForwardAudioToInbound.bind(this),
+    this.#agentSocket.onMedia(
+      this.translateAndForwardAudioToCaller.bind(this),
     );
   }
 
-  private translateAndForwardAudioToInbound(message: MediaBaseAudioMessage) {
+  private translateAndForwardAudioToCaller(message: MediaBaseAudioMessage) {
     // Wait for 1 second after the first time we hear audio from the agent
     // This ensures that we don't send beeps from Flex to OpenAI when the call
     // first connects
@@ -123,7 +123,7 @@ export default class AudioInterceptor {
     }
   }
 
-  private translateAndForwardAudioToOutbound(message: MediaBaseAudioMessage) {
+  private translateAndForwardAudioToAgent(message: MediaBaseAudioMessage) {
     if (!this.#callerOpenAISocket) {
       this.logger.error('Caller OpenAI WebSocket is not available.');
       return;
@@ -239,7 +239,7 @@ export default class AudioInterceptor {
             this.#callerMessages.length - 1
           ].first_audio_buffer_add_time = currentTime;
         }
-        this.#outboundSocket.send([message.delta]);
+        this.#agentSocket.send([message.delta]);
       }
     });
     agentSocket.on('message', (msg) => {
@@ -266,7 +266,7 @@ export default class AudioInterceptor {
             this.#agentMessages.length - 1
           ].first_audio_buffer_add_time = currentTime;
         }
-        this.#inboundSocket.send([message.delta]);
+        this.#callerSocket.send([message.delta]);
       }
     });
 
@@ -317,25 +317,25 @@ export default class AudioInterceptor {
     }
   }
 
-  get inboundSocket(): StreamSocket {
-    if (!this.#inboundSocket) {
-      throw new Error('Inbound socket not set');
+  get callerSocket(): StreamSocket {
+    if (!this.#callerSocket) {
+      throw new Error('Caller socket not set');
     }
-    return this.#inboundSocket;
+    return this.#callerSocket;
   }
 
-  set inboundSocket(value: StreamSocket) {
-    this.#inboundSocket = value;
+  set callerSocket(value: StreamSocket) {
+    this.#callerSocket = value;
   }
 
-  get outboundSocket(): StreamSocket {
-    if (!this.#outboundSocket) {
-      throw new Error('Outbound socket not set');
+  get agentSocket(): StreamSocket {
+    if (!this.#agentSocket) {
+      throw new Error('Agent socket not set');
     }
-    return this.#outboundSocket;
+    return this.#agentSocket;
   }
 
-  set outboundSocket(value: StreamSocket) {
-    this.#outboundSocket = value;
+  set agentSocket(value: StreamSocket) {
+    this.#agentSocket = value;
   }
 }
