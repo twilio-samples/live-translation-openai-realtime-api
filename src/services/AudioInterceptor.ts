@@ -278,10 +278,10 @@ export default class AudioInterceptor {
 
     // Event listeners for when an error occurs
     callerSocket.on('error', (error: Error) => {
-      this.logger.error('Caller webSocket error:', error);
+      this.logger.error(`Caller webSocket error: ${error}`);
     });
     agentSocket.on('error', (error: Error) => {
-      this.logger.error('Agent webSocket error:', error);
+      this.logger.error(`Agent webSocket error: ${error}`);
     });
 
     // Event listeners for when the connection is closed

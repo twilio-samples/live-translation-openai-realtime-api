@@ -49,16 +49,16 @@
         "speech_timeout": "auto",
         "offset": {
           "x": 360,
-          "y": 110
+          "y": 160
         },
         "loop": 1,
         "finish_on_key": "#",
-        "say": "Welcome to the AI Translator. What language would you like to speak in?\nPress 1 for Hindi\nPress 2 for Spanish\nPress 3 for German",
+        "say": "Welcome to the AI Translator. What language would you like to speak in?\nPress 1 for English\nPress 2 for Spanish\nPress 3 for French\nPress 4 for Mandarin\nPress 5 for Hindi",
         "language": "en-US",
         "stop_gather": true,
         "gather_language": "en",
         "profanity_filter": "true",
-        "timeout": 5
+        "timeout": 10
       }
     },
     {
@@ -70,7 +70,7 @@
           "event": "noMatch"
         },
         {
-          "next": "set_language_hindi",
+          "next": "set_language_english",
           "event": "match",
           "conditions": [
             {
@@ -84,7 +84,7 @@
           ]
         },
         {
-          "next": "set_language_english",
+          "next": "set_language_french",
           "event": "match",
           "conditions": [
             {
@@ -110,6 +110,34 @@
               "value": "2"
             }
           ]
+        },
+        {
+          "next": "set_language_mandarin",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "If value equal_to 4",
+              "arguments": [
+                "{{widgets.PromptforLanguage.Digits}}"
+              ],
+              "type": "equal_to",
+              "value": "4"
+            }
+          ]
+        },
+        {
+          "next": "set_language_hindi",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "If value equal_to 5",
+              "arguments": [
+                "{{widgets.PromptforLanguage.Digits}}"
+              ],
+              "type": "equal_to",
+              "value": "5"
+            }
+          ]
         }
       ],
       "properties": {
@@ -125,7 +153,7 @@
       "type": "set-variables",
       "transitions": [
         {
-          "next": "redirect_1",
+          "next": "AppRedirect",
           "event": "next"
         }
       ],
@@ -138,8 +166,8 @@
           }
         ],
         "offset": {
-          "x": 100,
-          "y": 740
+          "x": 1220,
+          "y": 730
         }
       }
     },
@@ -148,7 +176,7 @@
       "type": "set-variables",
       "transitions": [
         {
-          "next": "redirect_1",
+          "next": "AppRedirect",
           "event": "next"
         }
       ],
@@ -161,8 +189,8 @@
           }
         ],
         "offset": {
-          "x": 430,
-          "y": 760
+          "x": -190,
+          "y": 730
         }
       }
     },
@@ -171,7 +199,7 @@
       "type": "set-variables",
       "transitions": [
         {
-          "next": "redirect_1",
+          "next": "AppRedirect",
           "event": "next"
         }
       ],
@@ -184,13 +212,13 @@
           }
         ],
         "offset": {
-          "x": 760,
-          "y": 780
+          "x": 200,
+          "y": 730
         }
       }
     },
     {
-      "name": "redirect_1",
+      "name": "AppRedirect",
       "type": "add-twiml-redirect",
       "transitions": [
         {
@@ -209,8 +237,54 @@
           "y": 1190
         },
         "method": "POST",
-        "url": "https://d81c646b213a.ngrok.app/incoming-call?lang={{flow.variables.caller_language}}",
+        "url": "https://[your-ngrok-domain].ngrok.app/incoming-call?lang={{flow.variables.caller_language}}",
         "timeout": "14400"
+      }
+    },
+    {
+      "name": "set_language_mandarin",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "AppRedirect",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "type": "string",
+            "value": "mandarin",
+            "key": "caller_language"
+          }
+        ],
+        "offset": {
+          "x": 890,
+          "y": 730
+        }
+      }
+    },
+    {
+      "name": "set_language_french",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "AppRedirect",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "type": "string",
+            "value": "french",
+            "key": "caller_language"
+          }
+        ],
+        "offset": {
+          "x": 560,
+          "y": 730
+        }
       }
     }
   ],

@@ -20,7 +20,7 @@ const ConfigSchema = Type.Strict(
     NGROK_DOMAIN: Type.String(),
     TWILIO_ACCOUNT_SID: Type.String(),
     TWILIO_AUTH_TOKEN: Type.String(),
-    TWILIO_TRANSLATE_NUMBER: Type.String(),
+    TWILIO_CALLER_NUMBER: Type.String(),
     TWILIO_FLEX_NUMBER: Type.String(),
     TWILIO_FLEX_WORKFLOW_SID: Type.String(),
     OPENAI_API_KEY: Type.String(),

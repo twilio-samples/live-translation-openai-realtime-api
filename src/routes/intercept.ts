@@ -47,7 +47,7 @@ const interceptWS: FastifyPluginAsyncTypebox = async (server) => {
 
           logger.info('Connecting to Agent');
           await twilio.calls.create({
-            from: server.config.TWILIO_TRANSLATE_NUMBER,
+            from: server.config.TWILIO_CALLER_NUMBER,
             to: server.config.TWILIO_FLEX_NUMBER,
             callerId: customParameters.from,
             twiml: `

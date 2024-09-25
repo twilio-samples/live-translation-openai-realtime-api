@@ -89,7 +89,7 @@ export default class StreamSocket {
       this.logger.info('WebSocket connection closed');
     });
     this.socket.on('error', (err) => {
-      this.logger.error('WebSocket error:', err);
+      this.logger.error(`WebSocket error: ${err}`);
     });
   }
 
@@ -135,7 +135,6 @@ export default class StreamSocket {
    * @param isLast
    */
   public send = (messages: string[], isLast = false) => {
-    // this.logger.info('The stream sid is %s', this.streamSid);
     const buffers = messages.map((msg) => Buffer.from(msg, 'base64'));
     const payload = Buffer.concat(buffers).toString('base64');
 
