@@ -1,4 +1,4 @@
-#  Realtime AI Voice Translation with Twilio Flex & OpenAI
+#  Live Voice Translation with Twilio & OpenAI Realtime
 This application demonstrates how to use Twilio and OpenAI's Realtime API for bidirectional
 voice language translation between a caller and a contact center agent.
 
