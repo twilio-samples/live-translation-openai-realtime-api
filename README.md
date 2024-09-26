@@ -45,7 +45,7 @@ To spin up an ngrok tunnel, open a Terminal and run:
 ```
 ngrok http 5050
 ```
-Once the tunnel has been initiated, copy the `Forwarding` URL. It will look something like: `https://[your-ngrok-domain].ngrok.app`. You will
+Once the tunnel has been initiated, copy the `Forwarding` URL. It will look something like: `https://[your-ngrok-subdomain].ngrok.app`. You will
 need this when configuring environment variables for the middleware in the next section.
 
 Note that the `ngrok` command above forwards to a development server running on port `5050`, which is the default port configured in this application. If
@@ -61,7 +61,7 @@ Keep in mind that each time you run the `ngrok http` command, a new URL will be 
 Once created, open `.env` in your code editor. You are required to set the following environment variables for the app to function properly:
 | Variable Name     | Description                                      | Example Value          |
 |-------------------|--------------------------------------------------|------------------------|
-| `NGROK_DOMAIN` | The forwarding URL of your ngrok tunnel initiated above | `[your-ngrok-domain].ngrok.app` |
+| `NGROK_DOMAIN` | The forwarding URL of your ngrok tunnel initiated above | `[your-ngrok-subdomain].ngrok.app` |
 | `TWILIO_ACCOUNT_SID` | Your Twilio Account SID, which can be found in the Twilio Console. | `ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX` |
 | `TWILIO_AUTH_TOKEN`  | Your Twilio Auth Token, which is also found in the Twilio Console.  | `your_auth_token_here`  |
 | `TWILIO_CALLER_NUMBER`   | The additional Twilio phone number you purchased, **not** connected to Flex. Used for the caller-facing "leg" of the call. | `+18331234567` |
@@ -82,7 +82,7 @@ You'll need to import the included Studio flow in the [inbound_language_studio_f
 
 In the Twilio Console, go to the [Studio Flows](https://console.twilio.com/us1/develop/studio/flows?frameUrl=%2Fconsole%2Fstudio%2Fflows%3Fx-target-region%3Dus1) page and click **Create New Flow**. Give your Flow a name, like "Inbound Translation IVR", click Next, then select the option to **Import from JSON** and click Next.
 
-Copy the contents of [inbound_language_studio_flow.json](inbound_language_studio_flow.json) and paste it into the textbox. Search for `[your-ngrok-domain]` and replace with your assigned ngrok tunnel domain. Click **Next** to import the Studio Flow, then **Publish**. 
+Copy the contents of [inbound_language_studio_flow.json](inbound_language_studio_flow.json) and paste it into the textbox. Search for `[your-ngrok-subdomain]` and replace with your assigned ngrok tunnel subdomain. Click **Next** to import the Studio Flow, then **Publish**. 
 
 The included Studio Flow will play a prerecorded message for the caller asking them to select their preferred language as either:
 1. English
@@ -102,12 +102,12 @@ In your Phone Number configuration settings, update the first **A call comes in*
 #### Point Agent Phone Number and TaskRouter Workspace to Middleware
 The last step is to point the agent-facing phone number (`TWILIO_FLEX_NUMBER`) and the TaskRouter "Flex Task Assignment" Workspace to this middleware app. This is needed to connect the conversation to a contact center agent in Flex.
 
-In the Twilio Console, go to **Phone Numbers** > **Manage** > **Active Numbers** and click on Flex phone number that was auto-provisioned. In your Phone Number configuration settings, update the first **A call comes in** dropdown to **Webhook** and set the URL to `https://[your-ngrok-domain].ngrok.app/outbound-call`, ensure **HTTP** is set to **HTTP POST**, and click **Save configuration**.
+In the Twilio Console, go to **Phone Numbers** > **Manage** > **Active Numbers** and click on Flex phone number that was auto-provisioned. In your Phone Number configuration settings, update the first **A call comes in** dropdown to **Webhook** and set the URL to `https://[your-ngrok-subdomain].ngrok.app/outbound-call`, ensure **HTTP** is set to **HTTP POST**, and click **Save configuration**.
 ![Point Agent Phone Number to Middleware](https://github.com/user-attachments/assets/dd14dc9e-635a-43fd-b2f9-7f8cd902ba61)
 
-Ensure that you replace `[your-ngrok-domain]` with your assigned ngrok tunnel domain.
+Ensure that you replace `[your-ngrok-subdomain]` with your assigned ngrok tunnel subdomain.
 
-Then, go to **TaskRouter** > **Workspaces** > **Flex Task Assignment** > **Settings**, and set the **Event callback URL** to `https://[your-ngrok-domain].ngrok.app/reservation-accepted`, again replacing `[your-ngrok-domain]` with your assigned ngrok tunnel domain.
+Then, go to **TaskRouter** > **Workspaces** > **Flex Task Assignment** > **Settings**, and set the **Event callback URL** to `https://[your-ngrok-subdomain].ngrok.app/reservation-accepted`, again replacing `[your-ngrok-subdomain]` with your assigned ngrok tunnel subdomain.
 
 ![Point TaskRouter Workspace to Middleware](https://github.com/user-attachments/assets/4fbeee03-6fb7-47a8-bc39-4b8abb9932cc)
 
