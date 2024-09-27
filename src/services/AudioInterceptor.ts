@@ -146,7 +146,7 @@ export default class AudioInterceptor {
    * @private
    */
   private setupOpenAISockets() {
-    const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime';
+    const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01';
     const callerSocket = new WebSocket(url, {
       headers: {
         Authorization: `Bearer ${this.config.OPENAI_API_KEY}`,
