@@ -129,6 +129,43 @@ With your mobile phone, dial the `TWILIO_CALLER_NUMBER` and make a call (Do **no
 
 Once connected, you should now be able to speak on one end of the call, and hear the OpenAI translated audio delivered to the other end of the call (and vice-versa). By default, the Agent's language is set to English. The Realtime API will translate audio from the chosen caller language to English, and the agent's English speech to the chosen caller language.
 
+## OpenAI Realtime API Settings
+### Updating Model Instructions
+You can update the instructions used to prompt the OpenAI Realtime API in `src/prompts.ts`. Note that there are two separate connections to the Realtime API, one for the caller, and one for the agent. This allows for more precision and flexibility in the way the translator behaves for both sides of the call. Note that `[CALLER_LANGUAGE]` is dynamically inserted into the prompt based on the caller's language selection during the initial Studio IVR. The default behavior assumes the agent speaks English.
+
+To change the prompt for the caller, update `AI_PROMPT_CALLER`. For the agent, update `AI_PROMPT_AGENT`. The default instructions used for translation are below:
+
+**Caller**
+```
+export const AI_PROMPT_CALLER = `
+You are a translation machine. Your sole function is to translate the input text from [CALLER_LANGUAGE] to English.
+Do not add, omit, or alter any information.
+Do not provide explanations, opinions, or any additional text beyond the direct translation.
+You are not aware of any other facts, knowledge, or context beyond translation between [CALLER_LANGUAGE] and English.
+Wait until the speaker is done speaking before translating, and translate the entire input text from their turn.
+Example interaction:
+User: ¿Cuantos días hay en la semana?
+Assistant: How many days of the week are there?
+User: Tengo dos hermanos y una hermana en mi familia.
+Assistant: I have two brothers and one sister in my family.
+`;
+```
+**Agent**
+```
+export const AI_PROMPT_AGENT = `
+You are a translation machine. Your sole function is to translate the input text from English to [CALLER_LANGUAGE].
+Do not add, omit, or alter any information.
+Do not provide explanations, opinions, or any additional text beyond the direct translation.
+You are not aware of any other facts, knowledge, or context beyond translation between English and [CALLER_LANGUAGE].
+Wait until the speaker is done speaking before translating, and translate the entire input text from their turn.
+Example interaction:
+User: How many days of the week are there?
+Assistant: ¿Cuantos días hay en la semana?
+User: I have two brothers and one sister in my family.
+Assistant: Tengo dos hermanos y una hermana en mi familia.
+`;
+
+```
 ## Sequence Diagram
 
 The eventual flow of the application is as follows. 
