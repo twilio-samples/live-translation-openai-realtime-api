@@ -9,7 +9,7 @@ to a natural two-way voice conversation.
 See [here](https://www.loom.com/share/71498319660943638e1ef2c9928bcd2a) for a video demo of the real time translation app in action.
 
 Below is a high level architecture diagram of how this application works:
-![Realtime Translation Diagram](/realtime-voice-translation-app.jpeg)
+![Realtime Translation Diagram](/live-translation-readme-images/realtime-voice-translation-app.jpeg)
 
 This application uses the following Twilio products in conjuction with OpenAI's Realtime API, orchestrated by this middleware application:
 - Voice
@@ -97,23 +97,23 @@ You can update the Studio Flow logic to change the languages you'd like to suppo
 Once your Studio Flow is imported and published, the next step is to point your inbound / caller-facing phone number (`TWILIO_CALLER_NUMBER`) to your Studio Flow. In the Twilio Console, go to **Phone Numbers** > **Manage** > **Active Numbers** and click on the additional phone number you purchased (**not** the one auto-provisioned by Flex).
 
 In your Phone Number configuration settings, update the first **A call comes in** dropdown to **Studio Flow**, select the name of the Flow you created above, and click **Save configuration**.
-![Point Caller Phone Number to Studio Flow](https://github.com/user-attachments/assets/03faf925-ce72-43d9-ad36-2b25d769aac6)
+![Point Caller Phone Number to Studio Flow](/live-translation-readme-images/inbound-voice-number-webhook.png)
 
 #### Point Agent Phone Number and TaskRouter Workspace to Middleware
 The last step is to point the agent-facing phone number (`TWILIO_FLEX_NUMBER`) and the TaskRouter "Flex Task Assignment" Workspace to this middleware app. This is needed to connect the conversation to a contact center agent in Flex.
 
 In the Twilio Console, go to **Phone Numbers** > **Manage** > **Active Numbers** and click on Flex phone number that was auto-provisioned. In your Phone Number configuration settings, update the first **A call comes in** dropdown to **Webhook** and set the URL to `https://[your-ngrok-subdomain].ngrok.app/outbound-call`, ensure **HTTP** is set to **HTTP POST**, and click **Save configuration**.
-![Point Agent Phone Number to Middleware](https://github.com/user-attachments/assets/dd14dc9e-635a-43fd-b2f9-7f8cd902ba61)
+![Point Agent Phone Number to Middleware]/live-translation-readme-images(/flex-voice-number-webhook.png)
 
 Ensure that you replace `[your-ngrok-subdomain]` with your assigned ngrok tunnel subdomain.
 
 Then, go to **TaskRouter** > **Workspaces** > **Flex Task Assignment** > **Settings**, and set the **Event callback URL** to `https://[your-ngrok-subdomain].ngrok.app/reservation-accepted`, again replacing `[your-ngrok-subdomain]` with your assigned ngrok tunnel subdomain.
 
-![Point TaskRouter Workspace to Middleware](https://github.com/user-attachments/assets/4fbeee03-6fb7-47a8-bc39-4b8abb9932cc)
+![Point TaskRouter Workspace to Middleware](/live-translation-readme-images/task-router-event-callback-url.png)
 
 Finally, under **Select events**, check the checkbox for **Reservation Accepted**.
 
-![Select events > Reservation Accepted](https://github.com/user-attachments/assets/7745ca50-722c-453d-a175-af74bdb7f371)
+![Select events > Reservation Accepted](/live-translation-readme-images/task-router-reservation-accepted.png)
 
 ### Run the app
 Once dependencies are installed, `.env` is set up, and Twilio is configured properly, run the dev server with the following command:
