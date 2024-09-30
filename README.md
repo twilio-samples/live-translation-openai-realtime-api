@@ -131,7 +131,7 @@ Once connected, you should now be able to speak on one end of the call, and hear
 
 ## OpenAI Realtime API Settings
 ### Updating Model Instructions
-You can update the instructions used to prompt the OpenAI Realtime API in `src/prompts.ts`. Note that there are two separate connections to the Realtime API, one for the caller, and one for the agent. This allows for more precision and flexibility in the way the translator behaves for both sides of the call. Note that `[CALLER_LANGUAGE]` is dynamically inserted into the prompt based on the caller's language selection during the initial Studio IVR. The default behavior assumes the agent speaks English.
+You can update the instructions used to prompt the OpenAI Realtime API in [`src/prompts.ts`](/src/prompts.ts). Note that there are two separate connections to the Realtime API, one for the caller, and one for the agent. This allows for more precision and flexibility in the way the translator behaves for both sides of the call. Note that `[CALLER_LANGUAGE]` is dynamically inserted into the prompt based on the caller's language selection during the initial Studio IVR. The default behavior assumes the agent speaks English.
 
 To change the prompt for the caller, update `AI_PROMPT_CALLER`. For the agent, update `AI_PROMPT_AGENT`. The default instructions used for translation are below:
 
